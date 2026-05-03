@@ -1,0 +1,211 @@
+# AGENTS.md
+
+## Proposito del producto
+- App movil Flutter para registrar pedidos de balones de gas.
+- Objetivo: reemplazar el cuaderno fisico.
+- Exito del MVP: que el negocio deje de depender del cuaderno.
+
+## Principios de producto
+- Simplicidad extrema.
+- Rapidez de registro.
+- Pocos campos.
+- Botones grandes.
+- Texto claro.
+- UX pensada para usuario adulto.
+- Fecha por defecto = hoy.
+- Cantidad por defecto = 1 balon.
+- Evitar escritura innecesaria.
+- Priorizar flujos reales sobre diseno sofisticado.
+
+## Regla Android-first
+- Target principal: Android.
+- No trabajar iOS, web, desktop ni otros targets salvo instruccion explicita.
+- Validar con `flutter doctor`, Android SDK, Android Studio, emulador o dispositivo fisico.
+- Considerar que `127.0.0.1` no funciona igual desde un celular fisico.
+- Preparar configuracion centralizada para `baseUrl`.
+- En emulador Android usar `10.0.2.2` si corresponde.
+- En celular fisico usar IP LAN o backend desplegado.
+
+## Equipo virtual de agentes
+
+### A) Flutter MVP Lead
+- Responsable de estructura Flutter, navegacion, pantallas y flujo principal.
+- Debe evitar sobrearquitectura.
+- Debe priorizar una app funcional antes que una app perfecta.
+- Debe resolver primero el flujo operativo real: buscar cliente, crear cliente, registrar pedido e historial.
+
+### B) Android Build Agent
+- Responsable de configuracion Android.
+- Debe revisar `android/`, Gradle, permisos, build APK y ejecucion en dispositivo o emulador.
+- No debe tocar iOS ni web salvo autorizacion explicita.
+- Debe validar compatibilidad con Android real antes de asumir que el backend local funcionara en el celular.
+
+### C) API Contract Agent
+- Responsable de modelos, DTOs y servicios HTTP.
+- Debe consumir solo endpoints existentes.
+- Debe manejar `total_soles` y `saldo_pendiente` aunque lleguen como string.
+- Debe manejar errores como `409` de cliente duplicado.
+- No debe inventar nuevos endpoints.
+- Debe respetar que `alias = direccion` por ahora, sin forzar campos que el backend no documente.
+
+### D) UX Adult-First Agent
+- Responsable de revisar que la app sea simple para una persona de 55 a 56 anos.
+- Debe exigir botones grandes, labels claros, confirmaciones visibles y pocos pasos.
+- Debe rechazar pantallas densas.
+- Debe reducir friccion antes de agregar adornos visuales.
+
+### E) QA Smoke Test Agent
+- Responsable de definir y ejecutar pruebas manuales minimas:
+  - crear cliente
+  - buscar cliente
+  - registrar pedido pagado
+  - registrar pedido no pagado
+  - ver historial del cliente
+  - error de conexion
+  - cliente duplicado
+- Debe probar en Android siempre que sea posible.
+- Debe reportar resultados de forma concreta, sin asumir que algo funciono si no se verifico.
+
+### F) Release APK Agent
+- Responsable futuro de preparar APK de prueba para instalar en Android.
+- Debe documentar comandos de build.
+- No debe publicar en Play Store en el MVP inicial.
+
+## Reglas de arquitectura Flutter
+- Usar estructura simple feature-first.
+- Propuesta base:
+  - `lib/core/config`
+  - `lib/core/network`
+  - `lib/features/clientes`
+  - `lib/features/pedidos`
+  - `lib/shared`
+- No introducir Clean Architecture completa si no aporta al MVP.
+- No agregar paquetes sin justificarlos.
+- No usar state management complejo si `StatefulWidget` o `ValueNotifier` alcanza.
+- Mantener modelos y servicios separados de widgets.
+- Centralizar `baseUrl`.
+- Centralizar manejo de errores de red.
+
+## Reglas de implementacion
+- Un cambio por vez.
+- Crear o editar pocos archivos por corrida.
+- Despues de cambios, correr:
+  - `flutter analyze`
+  - `flutter test` si existen tests
+- Documentar cada corrida en `SUMMARY.md` o en el archivo de resumen indicado por el usuario.
+- No hacer refactors grandes sin instruccion.
+- No modificar backend desde este repo.
+- No agregar features futuras al MVP.
+
+## Flujos MVP obligatorios
+- Buscar cliente.
+- Crear cliente si no existe.
+- Registrar pedido.
+- Marcar pagado o no pagado.
+- Ver historial por cliente.
+
+## Cosas prohibidas por ahora
+- Login.
+- Roles de usuario.
+- Inventario formal.
+- Mapa.
+- Geolocalizacion.
+- Prediccion de compras.
+- Dashboard avanzado.
+- Graficos.
+- Notificaciones.
+- Pagos parciales.
+- Sincronizacion offline compleja.
+- Multiempresa.
+- iOS, web o desktop.
+
+## Como deben responder los agentes
+- Siempre entregar resumen de archivos modificados.
+- Siempre explicar como probar.
+- Siempre indicar riesgos o pendientes.
+- No ocultar errores.
+- No asumir endpoints no documentados.
+- No cambiar el alcance sin aprobacion.
+
+## Token discipline / caveman-lite mode
+
+Usar caveman-lite solo cuando el usuario lo pida explicitamente o cuando la tarea sea un reporte rutinario de implementacion, resumen QA, plan de commit, respuesta de PR review o resumen de build Android.
+
+El objetivo es reducir tokens de salida sin perder precision tecnica. No es un modo global, no reemplaza el flujo de agentes y no aplica a documentacion formal ni a decisiones tecnicas sensibles.
+
+Reglas:
+- Ser breve.
+- Mantener exactitud tecnica.
+- No usar relleno, saludos largos ni explicaciones repetidas.
+- Preferir bullets.
+- No omitir riesgos criticos, bloqueos ni dudas de contrato.
+- Nombrar archivos, comandos, endpoints, errores y dispositivos con precision.
+- Volver a formato normal cuando haga falta contexto completo, trazabilidad o handoff formal.
+
+Usar caveman-lite para:
+- Reportes de implementacion Flutter.
+- QA smoke summaries.
+- Salida resumida de `flutter analyze`.
+- Salida resumida de `flutter test`.
+- Planificacion de commits.
+- Respuestas de PR review.
+- Resumen de build APK o instalacion Android.
+- Resumenes tipo "que cambio / archivos / checks / riesgos / siguiente paso".
+
+No usar caveman-lite para:
+- Decisiones de arquitectura Flutter.
+- Dudas de contrato API o payloads no confirmados.
+- Debugging profundo de Gradle, Android SDK o build system.
+- Problemas de red Android con `10.0.2.2`, IP LAN o backend desplegado.
+- Decisiones de despliegue backend, costos o infraestructura.
+- Analisis de `HTTP` vs `HTTPS`, certificados o seguridad.
+- UX adulto-first cuando se necesite explicacion completa.
+- Documentacion formal de handoff.
+
+Forma de salida por defecto:
+
+```md
+- Done:
+- Files:
+- Checks:
+- Android:
+- Risks:
+- Next:
+```
+
+Prompt shortcut:
+
+`Modo caveman-lite: breve, tecnico, sin relleno. No omitas riesgos criticos.`
+
+Ejemplo de reporte de implementacion:
+
+```md
+- Done: Agregada pantalla de busqueda de clientes y submit de pedido.
+- Files: `lib/features/clientes/...`, `lib/features/pedidos/...`.
+- Checks: `flutter analyze`.
+- Android: Probado en emulador con `10.0.2.2`.
+- Risks: `409` duplicado aun sin copy final.
+- Next: Validar flujo de cliente nuevo en dispositivo fisico.
+```
+
+Ejemplo de QA smoke summary:
+
+```md
+- Done: Validados crear cliente, buscar cliente y pedido pagado.
+- Files: Flujo clientes/pedidos.
+- Checks: Smoke manual.
+- Android: Emulador Android.
+- Risks: Falta prueba de error de conexion en celular real.
+- Next: Probar con backend por IP LAN.
+```
+
+Ejemplo de build/release summary:
+
+```md
+- Done: APK debug generado.
+- Files: `android/`, `pubspec.yaml`.
+- Checks: `flutter analyze`, `flutter build apk`.
+- Android: Instalable en dispositivo fisico.
+- Risks: `baseUrl` aun apunta a entorno local.
+- Next: Preparar config para backend desplegado.
+```
