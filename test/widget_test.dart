@@ -1,41 +1,163 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:gas_frontend/core/network/api_exception.dart';
 import 'package:gas_frontend/features/clientes/cliente_service.dart';
 import 'package:gas_frontend/features/clientes/models/cliente.dart';
 import 'package:gas_frontend/features/clientes/models/cliente_create_request.dart';
+import 'package:gas_frontend/features/clientes/models/cliente_reciente.dart';
 import 'package:gas_frontend/features/clientes/screens/buscar_cliente_screen.dart';
 import 'package:gas_frontend/features/clientes/screens/crear_cliente_screen.dart';
 import 'package:gas_frontend/features/clientes/screens/cliente_seleccionado_screen.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_create_request.dart';
 import 'package:gas_frontend/features/pedidos/pedido_service.dart';
-import 'package:gas_frontend/main.dart';
+import 'package:gas_frontend/features/reportes/models/deudas_resumen.dart';
+import 'package:gas_frontend/features/reportes/models/pedido_reporte.dart';
+import 'package:gas_frontend/features/reportes/models/reporte_diario.dart';
+import 'package:gas_frontend/features/reportes/services/reportes_service.dart';
+import 'package:gas_frontend/features/stock/models/catalogo_item.dart';
+import 'package:gas_frontend/features/stock/models/stock_dia.dart';
+import 'package:gas_frontend/features/stock/models/stock_operacion.dart';
+import 'package:gas_frontend/features/stock/models/stock_requests.dart';
+import 'package:gas_frontend/features/stock/models/stock_resumen.dart';
+import 'package:gas_frontend/features/stock/services/stock_service.dart';
+import 'package:gas_frontend/home_screen.dart';
 
 void main() {
   testWidgets('home screen shows MVP actions', (WidgetTester tester) async {
-    await tester.pumpWidget(const GasApp());
+    await _pumpHome(tester);
+    await tester.pumpAndSettle();
 
-    expect(find.text('Registrar pedidos'), findsOneWidget);
-    expect(find.text('Nuevo pedido'), findsOneWidget);
-    expect(find.text('Buscar cliente'), findsOneWidget);
+    expect(find.text('Resumen del dia'), findsOneWidget);
+    expect(find.text('Registrar pedido'), findsOneWidget);
+    expect(find.text('Buscar'), findsOneWidget);
     expect(find.text('Historial'), findsOneWidget);
-
-    expect(find.byIcon(Icons.add_shopping_cart), findsOneWidget);
-    expect(find.byIcon(Icons.search), findsOneWidget);
-    expect(find.byIcon(Icons.receipt_long), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
+    expect(find.text('Stock de hoy'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Deudas'), 300);
+    expect(find.text('Deudas'), findsOneWidget);
   });
 
   testWidgets('home opens client search from Buscar cliente', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const GasApp());
+    await _pumpHome(tester);
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Buscar cliente'));
+    await tester.tap(find.text('Buscar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Busca por direccion o telefono'), findsOneWidget);
     expect(find.text('Crear nuevo cliente'), findsOneWidget);
+  });
+
+  testWidgets('home shows empty reports summary', (WidgetTester tester) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.empty());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total vendido'), findsOneWidget);
+    expect(find.text('S/ 0.00'), findsWidgets);
+    expect(find.text('Aun no hay pedidos hoy.'), findsOneWidget);
+  });
+
+  testWidgets('home shows stock not started state', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, stockService: _FakeStockService.notStarted());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
+
+    expect(find.text('Stock de hoy'), findsOneWidget);
+    expect(
+      find.text('Todavia no se registro el stock del dia.'),
+      findsOneWidget,
+    );
+    expect(find.text('Iniciar dia'), findsOneWidget);
+  });
+
+  testWidgets('home shows stock summary with data', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, stockService: _FakeStockService.withData());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
+
+    expect(find.text('29'), findsOneWidget);
+    expect(find.textContaining('Inicio 30'), findsOneWidget);
+    expect(find.textContaining('Vendidos 1'), findsOneWidget);
+    expect(find.text('Agregar'), findsOneWidget);
+    expect(find.text('Ajustar'), findsOneWidget);
+  });
+
+  testWidgets('home shows stock error state', (WidgetTester tester) async {
+    await _pumpHome(tester, stockService: _FakeStockService.failure());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
+
+    expect(find.text('No se pudo cargar el stock.'), findsOneWidget);
+    expect(find.text('Reintentar'), findsWidgets);
+  });
+
+  testWidgets('home shows reports summary with centavos money', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.withData());
+    await tester.pumpAndSettle();
+
+    expect(find.text('S/ 165.00'), findsOneWidget);
+    expect(find.text('S/ 110.00'), findsOneWidget);
+    expect(find.text('S/ 55.00'), findsOneWidget);
+    expect(find.text('2 pedidos registrados hoy.'), findsOneWidget);
+  });
+
+  testWidgets('home shows reports error state', (WidgetTester tester) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.failure());
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo cargar el resumen.'), findsOneWidget);
+    expect(find.text('Reintentar'), findsOneWidget);
+  });
+
+  testWidgets('home shows empty debts section', (WidgetTester tester) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.empty());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Deudas'), 300);
+
+    expect(find.text('Deudas'), findsOneWidget);
+    expect(find.text('Sin deudas pendientes'), findsOneWidget);
+    expect(find.text('S/ 0.00'), findsWidgets);
+  });
+
+  testWidgets('home shows debts section with pending orders', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.withData());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Deudas'), 300);
+
+    expect(find.text('Deudas'), findsOneWidget);
+    expect(find.text('1 pedidos por cobrar'), findsOneWidget);
+    expect(find.text('S/ 55.00'), findsWidgets);
+    expect(find.text('Ver'), findsOneWidget);
+
+    await tester.tap(find.text('Ver'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Deudas pendientes'), findsOneWidget);
+    expect(find.text('Las Higueras 371'), findsOneWidget);
+  });
+
+  testWidgets('home shows debts error state', (WidgetTester tester) async {
+    await _pumpHome(
+      tester,
+      reportesService: _FakeReportesService.deudasFailure(),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Deudas pendientes'), 300);
+
+    expect(find.text('No se pudo cargar las deudas.'), findsOneWidget);
+    expect(find.text('Reintentar'), findsOneWidget);
   });
 
   testWidgets('client search selects a result', (WidgetTester tester) async {
@@ -44,6 +166,7 @@ void main() {
         home: _SearchHost(
           clienteService: _FakeClienteService.withResults(),
           pedidoService: _FakePedidoService(),
+          stockService: _FakeStockService.notStarted(),
         ),
       ),
     );
@@ -52,6 +175,48 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Buscar'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Las Higueras 371'), findsOneWidget);
+
+    await tester.tap(find.text('Las Higueras 371'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cliente seleccionado'), findsWidgets);
+    expect(find.text('999888777'), findsOneWidget);
+  });
+
+  testWidgets('client search shows empty recent clients state', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _SearchHost(
+          clienteService: _FakeClienteService.empty(),
+          pedidoService: _FakePedidoService(),
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Clientes recientes'), findsOneWidget);
+    expect(find.text('Aun no hay clientes recientes.'), findsOneWidget);
+  });
+
+  testWidgets('client search selects a recent client', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _SearchHost(
+          clienteService: _FakeClienteService.withRecentClients(),
+          pedidoService: _FakePedidoService(),
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Clientes recientes'), findsOneWidget);
     expect(find.text('Las Higueras 371'), findsOneWidget);
 
     await tester.tap(find.text('Las Higueras 371'));
@@ -93,6 +258,7 @@ void main() {
             telefono: '999888777',
           ),
           pedidoService: pedidoService,
+          stockService: _FakeStockService.notStarted(),
         ),
       ),
     );
@@ -102,15 +268,23 @@ void main() {
 
     expect(find.text('Nuevo pedido'), findsOneWidget);
     expect(find.widgetWithText(TextField, '1'), findsOneWidget);
+    expect(find.text('Petroperu'), findsOneWidget);
+    expect(find.text('Normal'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).last, '55');
-    await tester.tap(find.text('Guardar pedido'));
+    await tester.enterText(find.widgetWithText(TextField, 'Precio'), '55');
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pump();
+    await tester.tap(find.text('Guardar pedido').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Pedido guardado como pagado.'), findsOneWidget);
     expect(pedidoService.lastRequest?.clienteId, 1);
     expect(pedidoService.lastRequest?.cantidadBalones, 1);
-    expect(pedidoService.lastRequest?.totalSoles, 55.0);
+    expect(pedidoService.lastRequest?.marcaBalon, 'PETROPERU');
+    expect(pedidoService.lastRequest?.tipoBalon, 'NORMAL');
+    expect(pedidoService.lastRequest?.precioUnitarioCentavos, 5500);
+    expect(pedidoService.lastRequest?.montoTotalCentavos, 5500);
+    expect(pedidoService.lastRequest?.montoPendienteCentavos, 0);
     expect(pedidoService.lastRequest?.pagado, isTrue);
   });
 
@@ -126,6 +300,7 @@ void main() {
             telefono: '999888777',
           ),
           pedidoService: _FakePedidoService.withHistory(),
+          stockService: _FakeStockService.notStarted(),
         ),
       ),
     );
@@ -152,6 +327,7 @@ void main() {
             telefono: '999888777',
           ),
           pedidoService: _FakePedidoService(),
+          stockService: _FakeStockService.notStarted(),
         ),
       ),
     );
@@ -163,20 +339,40 @@ void main() {
   });
 }
 
+Future<void> _pumpHome(
+  WidgetTester tester, {
+  ReportesService? reportesService,
+  StockService? stockService,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: HomeScreen(
+        clienteService: _FakeClienteService.withResults(),
+        pedidoService: _FakePedidoService(),
+        reportesService: reportesService ?? _FakeReportesService.empty(),
+        stockService: stockService ?? _FakeStockService.notStarted(),
+      ),
+    ),
+  );
+}
+
 class _SearchHost extends StatelessWidget {
   const _SearchHost({
     required this.clienteService,
     required this.pedidoService,
+    required this.stockService,
   });
 
   final ClienteService clienteService;
   final PedidoService pedidoService;
+  final StockService stockService;
 
   @override
   Widget build(BuildContext context) {
     return BuscarClienteScreen(
       clienteService: clienteService,
       pedidoService: pedidoService,
+      stockService: stockService,
     );
   }
 }
@@ -196,9 +392,26 @@ class _FakeClienteService implements ClienteService {
   _FakeClienteService.withResults()
     : _clientes = const [
         Cliente(id: 1, alias: 'Las Higueras 371', telefono: '999888777'),
+      ],
+      _recientes = const [];
+
+  _FakeClienteService.withRecentClients()
+    : _clientes = const [],
+      _recientes = [
+        ClienteReciente(
+          id: 1,
+          alias: 'Las Higueras 371',
+          telefono: '999888777',
+          direccion: 'Las Higueras 371',
+          ultimoPedidoFecha: DateTime(2026, 1, 16),
+          ultimoTotalCentavos: 5500,
+        ),
       ];
 
+  _FakeClienteService.empty() : _clientes = const [], _recientes = const [];
+
   final List<Cliente> _clientes;
+  final List<ClienteReciente> _recientes;
 
   @override
   Future<List<Cliente>> buscarClientes(String query, {int limit = 10}) async {
@@ -213,6 +426,11 @@ class _FakeClienteService implements ClienteService {
   @override
   Future<Cliente> obtenerCliente(int id) async {
     return _clientes.first;
+  }
+
+  @override
+  Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5}) async {
+    return _recientes.take(limit).toList();
   }
 }
 
@@ -231,6 +449,11 @@ class _FakePedidoService implements PedidoService {
           totalSoles: 110,
           pagado: true,
           saldoPendiente: 0,
+          marcaBalon: 'PETROPERU',
+          tipoBalon: 'NORMAL',
+          precioUnitarioCentavos: 5500,
+          montoTotalCentavos: 11000,
+          montoPendienteCentavos: 0,
         ),
       ];
 
@@ -247,14 +470,248 @@ class _FakePedidoService implements PedidoService {
       createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
       fechaEntrega: DateTime.parse('2026-01-16'),
       cantidadBalones: request.cantidadBalones,
-      totalSoles: request.totalSoles,
+      totalSoles: request.legacyTotalSoles,
       pagado: request.pagado,
-      saldoPendiente: request.pagado ? 0 : request.totalSoles,
+      saldoPendiente: request.pagado ? 0 : request.legacyTotalSoles,
+      marcaBalon: request.marcaBalon,
+      tipoBalon: request.tipoBalon,
+      precioUnitarioCentavos: request.precioUnitarioCentavos,
+      montoTotalCentavos: request.montoTotalCentavos,
+      montoPendienteCentavos: request.montoPendienteCentavos,
     );
   }
 
   @override
   Future<List<Pedido>> listarPedidosPorCliente(int clienteId) async {
     return _history;
+  }
+}
+
+class _FakeStockService implements StockService {
+  _FakeStockService.notStarted()
+    : _stock = StockResumen(
+        fecha: DateTime.parse('2026-01-16'),
+        stockIniciado: false,
+        stockInicial: null,
+        entradas: 0,
+        salidas: 0,
+        ajustes: 0,
+        stockActual: null,
+        stockFinalFisico: null,
+        cerrado: false,
+      ),
+      _error = null;
+
+  _FakeStockService.withData()
+    : _stock = StockResumen(
+        fecha: DateTime.parse('2026-01-16'),
+        stockIniciado: true,
+        stockInicial: 30,
+        entradas: 0,
+        salidas: 1,
+        ajustes: 0,
+        stockActual: 29,
+        stockFinalFisico: null,
+        cerrado: false,
+      ),
+      _error = null;
+
+  _FakeStockService.failure()
+    : _stock = null,
+      _error = const ApiException(message: 'No se pudo cargar el stock.');
+
+  final StockResumen? _stock;
+  final ApiException? _error;
+
+  @override
+  Future<StockResumen> obtenerResumenHoy() async {
+    final error = _error;
+    if (error != null) {
+      throw error;
+    }
+    return _stock!;
+  }
+
+  @override
+  Future<StockDia> obtenerStockDia(DateTime fecha) async {
+    return StockDia(
+      fecha: fecha,
+      stockIniciado: true,
+      stockInicial: 30,
+      entradas: 0,
+      salidas: 1,
+      ajustes: 0,
+      stockActual: 29,
+      stockFinalFisico: null,
+      cerrado: false,
+      movimientos: const [],
+    );
+  }
+
+  @override
+  Future<StockOperacion> iniciarDia(StockIniciarDiaRequest request) async {
+    return StockOperacion(
+      fecha: request.fecha,
+      tipo: 'INICIO_DIA',
+      cantidadDelta: request.stockInicial,
+      stockActual: request.stockInicial,
+      observacion: request.observacion,
+    );
+  }
+
+  @override
+  Future<StockOperacion> registrarEntrada(StockEntradaRequest request) async {
+    return StockOperacion(
+      fecha: request.fecha,
+      tipo: 'ENTRADA',
+      cantidadDelta: request.cantidad,
+      stockActual: request.cantidad,
+      observacion: request.observacion,
+    );
+  }
+
+  @override
+  Future<StockOperacion> ajustarStock(StockAjusteRequest request) async {
+    return StockOperacion(
+      fecha: request.fecha,
+      tipo: 'AJUSTE',
+      cantidadDelta: 0,
+      stockActual: request.stockFisico,
+      observacion: request.observacion,
+    );
+  }
+
+  @override
+  Future<List<CatalogoItem>> obtenerTiposBalon() async {
+    return const [
+      CatalogoItem(codigo: 'NORMAL', nombre: 'Normal'),
+      CatalogoItem(codigo: 'PREMIUM', nombre: 'Premium'),
+    ];
+  }
+
+  @override
+  Future<List<CatalogoItem>> obtenerMarcasBalon() async {
+    return const [
+      CatalogoItem(codigo: 'PETROPERU', nombre: 'Petroperu'),
+      CatalogoItem(codigo: 'SOLGAS', nombre: 'Solgas'),
+    ];
+  }
+}
+
+class _FakeReportesService implements ReportesService {
+  _FakeReportesService.empty()
+    : _reporte = ReporteDiario(
+        fecha: DateTime.parse('2026-01-16'),
+        pedidosCount: 0,
+        balonesVendidos: 0,
+        montoTotalCentavos: 0,
+        montoPagadoCentavos: 0,
+        montoPendienteCentavos: 0,
+        pedidos: const [],
+      ),
+      _deudas = const DeudasResumen(
+        pedidosCount: 0,
+        montoPendienteCentavos: 0,
+        pedidos: [],
+      ),
+      _resumenError = null,
+      _deudasError = null;
+
+  _FakeReportesService.withData()
+    : _reporte = ReporteDiario(
+        fecha: DateTime.parse('2026-01-16'),
+        pedidosCount: 2,
+        balonesVendidos: 3,
+        montoTotalCentavos: 16500,
+        montoPagadoCentavos: 11000,
+        montoPendienteCentavos: 5500,
+        pedidos: [
+          PedidoReporte(
+            id: 1,
+            clienteId: 1,
+            clienteAlias: 'Las Higueras 371',
+            cantidadBalones: 1,
+            montoTotalCentavos: 5500,
+            montoPendienteCentavos: 5500,
+            pagado: false,
+            fechaEntrega: DateTime.parse('2026-01-16'),
+            createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
+          ),
+        ],
+      ),
+      _deudas = DeudasResumen(
+        pedidosCount: 1,
+        montoPendienteCentavos: 5500,
+        pedidos: [
+          PedidoReporte(
+            id: 1,
+            clienteId: 1,
+            clienteAlias: 'Las Higueras 371',
+            cantidadBalones: 1,
+            montoTotalCentavos: 5500,
+            montoPendienteCentavos: 5500,
+            pagado: false,
+            fechaEntrega: DateTime.parse('2026-01-16'),
+            createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
+          ),
+        ],
+      ),
+      _resumenError = null,
+      _deudasError = null;
+
+  _FakeReportesService.failure()
+    : _reporte = null,
+      _deudas = const DeudasResumen(
+        pedidosCount: 0,
+        montoPendienteCentavos: 0,
+        pedidos: [],
+      ),
+      _resumenError = const ApiException(
+        message: 'No se pudo cargar el resumen.',
+      ),
+      _deudasError = null;
+
+  _FakeReportesService.deudasFailure()
+    : _reporte = ReporteDiario(
+        fecha: DateTime.parse('2026-01-16'),
+        pedidosCount: 0,
+        balonesVendidos: 0,
+        montoTotalCentavos: 0,
+        montoPagadoCentavos: 0,
+        montoPendienteCentavos: 0,
+        pedidos: const [],
+      ),
+      _deudas = null,
+      _resumenError = null,
+      _deudasError = const ApiException(
+        message: 'No se pudo cargar las deudas.',
+      );
+
+  final ReporteDiario? _reporte;
+  final DeudasResumen? _deudas;
+  final ApiException? _resumenError;
+  final ApiException? _deudasError;
+
+  @override
+  Future<ReporteDiario> obtenerResumenHoy() async {
+    final error = _resumenError;
+    if (error != null) {
+      throw error;
+    }
+    return _reporte!;
+  }
+
+  @override
+  Future<ReporteDiario> obtenerReporteDia(DateTime fecha) async {
+    return obtenerResumenHoy();
+  }
+
+  @override
+  Future<DeudasResumen> obtenerDeudas() async {
+    final error = _deudasError;
+    if (error != null) {
+      throw error;
+    }
+    return _deudas!;
   }
 }

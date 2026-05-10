@@ -47,12 +47,16 @@
 - Debe manejar errores como `409` de cliente duplicado.
 - No debe inventar nuevos endpoints.
 - Debe respetar que `alias = direccion` por ahora, sin forzar campos que el backend no documente.
+- Para reportes, debe usar dinero en centavos enteros (`int`) y no `double`.
 
 ### D) UX Adult-First Agent
 - Responsable de revisar que la app sea simple para una persona de 55 a 56 anos.
+- Skill recomendada: `../docs/codex-skills/gas-flutter-adult-first-ux/SKILL.md`.
 - Debe exigir botones grandes, labels claros, confirmaciones visibles y pocos pasos.
 - Debe rechazar pantallas densas.
 - Debe reducir friccion antes de agregar adornos visuales.
+- Debe mantener una estetica limpia y adulta; no infantilizar la UI.
+- Debe priorizar `Registrar pedido` por encima de stock, deudas o reportes.
 
 ### E) QA Smoke Test Agent
 - Responsable de definir y ejecutar pruebas manuales minimas:
@@ -71,6 +75,43 @@
 - Debe documentar comandos de build.
 - No debe publicar en Play Store en el MVP inicial.
 
+### G) Flutter Reports Integration Agent
+- Responsable futuro de integrar reportes operativos del backend.
+- Debe consumir solo:
+  - `GET /reportes/resumen-hoy`
+  - `GET /reportes/dia?fecha=YYYY-MM-DD`
+  - `GET /reportes/deudas`
+- Debe crear modelos separados de `Pedido`, porque reportes usan `*_centavos`.
+- Debe mantener UI simple: resumen del dia, numeros grandes, estado vacio y error claro.
+- No debe implementar dashboard avanzado, stock, marcas, tipos de balon ni auth compleja.
+- Debe seguir el plan en `../docs/frontend/GAS-REPORTS-FLUTTER-IMPLEMENTATION-PLAN.md`.
+
+### H) Money Formatting / Contracts Reviewer
+- Responsable de revisar contratos de dinero en Flutter.
+- Para reportes, el tipo canonico de dinero es `int` en centavos.
+- Debe rechazar `double` en modelos nuevos de reportes.
+- Debe exigir helper unico para mostrar soles: `formatSolesFromCentavos(int centavos)`.
+- Debe mantener parseo legacy de `Pedido` separado de los contratos nuevos de reportes.
+
+### I) Flutter Stock Products Integration Agent
+- Responsable futuro de integrar stock global, catalogos de marca/tipo y contratos nuevos de pedido.
+- Debe consumir solo:
+  - `GET /stock/resumen-hoy`
+  - `GET /stock/dia?fecha=YYYY-MM-DD`
+  - `POST /stock/iniciar-dia`
+  - `POST /stock/entrada`
+  - `POST /stock/ajuste`
+  - `GET /catalogos/tipos-balon`
+  - `GET /catalogos/marcas-balon`
+  - `POST /pedidos` actualizado
+  - `GET /pedidos` actualizado
+- Debe mantener `stock` como conteo global simple.
+- Debe usar defaults:
+  - `marca_balon = PETROPERU`
+  - `tipo_balon = NORMAL`
+- Debe permitir precio con enteros o dos decimales en UI, pero convertir a centavos para contratos nuevos.
+- No debe implementar stock por marca/tipo, motor de precios, dashboard avanzado, auth compleja ni AWS.
+
 ## Reglas de arquitectura Flutter
 - Usar estructura simple feature-first.
 - Propuesta base:
@@ -78,6 +119,7 @@
   - `lib/core/network`
   - `lib/features/clientes`
   - `lib/features/pedidos`
+  - `lib/features/reportes`
   - `lib/shared`
 - No introducir Clean Architecture completa si no aporta al MVP.
 - No agregar paquetes sin justificarlos.
@@ -103,6 +145,8 @@
 - Registrar pedido.
 - Marcar pagado o no pagado.
 - Ver historial por cliente.
+- Ver resumen simple del dia cuando se integre reportes.
+- Ver stock de hoy e iniciar stock del dia cuando se integre stock.
 
 ## Cosas prohibidas por ahora
 - Login.

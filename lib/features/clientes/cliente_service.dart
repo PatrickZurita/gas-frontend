@@ -2,6 +2,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import 'models/cliente.dart';
 import 'models/cliente_create_request.dart';
+import 'models/cliente_reciente.dart';
 
 class ClienteDuplicadoException extends ApiException {
   const ClienteDuplicadoException({required super.message, super.body})
@@ -14,6 +15,8 @@ abstract interface class ClienteService {
   Future<List<Cliente>> buscarClientes(String query, {int limit = 10});
 
   Future<Cliente> obtenerCliente(int id);
+
+  Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5});
 }
 
 class ApiClienteService implements ClienteService {
@@ -57,5 +60,18 @@ class ApiClienteService implements ClienteService {
   Future<Cliente> obtenerCliente(int id) async {
     final json = await _apiClient.getJson('/clientes/$id');
     return Cliente.fromJson(json as Map<String, Object?>);
+  }
+
+  @override
+  Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5}) async {
+    final json = await _apiClient.getJson(
+      '/clientes/recientes',
+      queryParameters: {'limit': '$limit'},
+    );
+
+    final list = json as List<Object?>;
+    return list
+        .map((item) => ClienteReciente.fromJson(item as Map<String, Object?>))
+        .toList();
   }
 }

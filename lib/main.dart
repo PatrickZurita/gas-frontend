@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'features/clientes/cliente_service.dart';
 import 'features/pedidos/pedido_service.dart';
+import 'features/reportes/services/reportes_service.dart';
+import 'features/stock/services/stock_service.dart';
 import 'home_screen.dart';
 
 void main() {
@@ -17,6 +19,8 @@ class GasApp extends StatelessWidget {
     final apiClient = ApiClient();
     final clienteService = ApiClienteService(apiClient);
     final pedidoService = ApiPedidoService(apiClient);
+    final reportesService = ApiReportesService(apiClient);
+    final stockService = ApiStockService(apiClient);
 
     return MaterialApp(
       title: 'Pedidos de Gas',
@@ -31,6 +35,8 @@ class GasApp extends StatelessWidget {
       home: HomeScreen(
         clienteService: clienteService,
         pedidoService: pedidoService,
+        reportesService: reportesService,
+        stockService: stockService,
       ),
     );
   }

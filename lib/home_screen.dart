@@ -3,61 +3,80 @@ import 'package:flutter/material.dart';
 import 'features/clientes/cliente_service.dart';
 import 'features/clientes/screens/buscar_cliente_screen.dart';
 import 'features/pedidos/pedido_service.dart';
+import 'features/reportes/services/reportes_service.dart';
+import 'features/reportes/widgets/deudas_pendientes_section.dart';
+import 'features/reportes/widgets/resumen_dia_section.dart';
+import 'features/stock/services/stock_service.dart';
+import 'features/stock/widgets/stock_hoy_section.dart';
 import 'shared/action_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.clienteService,
     required this.pedidoService,
+    required this.reportesService,
+    required this.stockService,
     super.key,
   });
 
   final ClienteService clienteService;
   final PedidoService pedidoService;
+  final ReportesService reportesService;
+  final StockService stockService;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pedidos de gas')),
       body: SafeArea(
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 12),
-              Text(
-                'Registrar pedidos',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+          children: [
+            Text(
+              'Pedidos de gas',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Lo principal para trabajar hoy.',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 18),
+            ActionButton(
+              label: 'Registrar pedido',
+              icon: Icons.add_shopping_cart,
+              primary: true,
+              onPressed: () => _openBuscarCliente(context),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _CompactHomeButton(
+                    label: 'Buscar',
+                    icon: Icons.search,
+                    onPressed: () => _openBuscarCliente(context),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Primero busca o crea el cliente.',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 32),
-              ActionButton(
-                label: 'Nuevo pedido',
-                icon: Icons.add_shopping_cart,
-                primary: true,
-                onPressed: () => _openBuscarCliente(context),
-              ),
-              const SizedBox(height: 16),
-              ActionButton(
-                label: 'Buscar cliente',
-                icon: Icons.search,
-                onPressed: () => _openBuscarCliente(context),
-              ),
-              const SizedBox(height: 16),
-              ActionButton(
-                label: 'Historial',
-                icon: Icons.receipt_long,
-                onPressed: () => _openBuscarCliente(context),
-              ),
-            ],
-          ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _CompactHomeButton(
+                    label: 'Historial',
+                    icon: Icons.receipt_long,
+                    onPressed: () => _openBuscarCliente(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            ResumenDiaSection(reportesService: reportesService),
+            const SizedBox(height: 16),
+            StockHoySection(stockService: stockService),
+            const SizedBox(height: 16),
+            DeudasPendientesSection(reportesService: reportesService),
+          ],
         ),
       ),
     );
@@ -70,8 +89,31 @@ class HomeScreen extends StatelessWidget {
             (_) => BuscarClienteScreen(
               clienteService: clienteService,
               pedidoService: pedidoService,
+              stockService: stockService,
             ),
       ),
+    );
+  }
+}
+
+class _CompactHomeButton extends StatelessWidget {
+  const _CompactHomeButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 24),
+      label: Text(label, style: const TextStyle(fontSize: 18)),
+      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56)),
     );
   }
 }

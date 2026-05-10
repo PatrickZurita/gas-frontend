@@ -9,6 +9,11 @@ class Pedido {
     required this.totalSoles,
     required this.pagado,
     required this.saldoPendiente,
+    required this.marcaBalon,
+    required this.tipoBalon,
+    required this.precioUnitarioCentavos,
+    required this.montoTotalCentavos,
+    required this.montoPendienteCentavos,
   });
 
   final int id;
@@ -20,6 +25,11 @@ class Pedido {
   final double totalSoles;
   final bool pagado;
   final double saldoPendiente;
+  final String marcaBalon;
+  final String tipoBalon;
+  final int? precioUnitarioCentavos;
+  final int? montoTotalCentavos;
+  final int? montoPendienteCentavos;
 
   factory Pedido.fromJson(Map<String, Object?> json) {
     return Pedido(
@@ -32,6 +42,11 @@ class Pedido {
       totalSoles: _parseMoney(json['total_soles']),
       pagado: json['pagado'] as bool,
       saldoPendiente: _parseMoney(json['saldo_pendiente']),
+      marcaBalon: json['marca_balon'] as String? ?? 'PETROPERU',
+      tipoBalon: json['tipo_balon'] as String? ?? 'NORMAL',
+      precioUnitarioCentavos: json['precio_unitario_centavos'] as int?,
+      montoTotalCentavos: json['monto_total_centavos'] as int?,
+      montoPendienteCentavos: json['monto_pendiente_centavos'] as int?,
     );
   }
 

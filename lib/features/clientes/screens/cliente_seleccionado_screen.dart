@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../features/pedidos/pedido_service.dart';
 import '../../../features/pedidos/screens/historial_cliente_screen.dart';
 import '../../../features/pedidos/screens/registrar_pedido_screen.dart';
+import '../../../features/stock/services/stock_service.dart';
 import '../../../shared/action_button.dart';
 import '../models/cliente.dart';
 
@@ -10,11 +11,13 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
   const ClienteSeleccionadoScreen({
     required this.cliente,
     required this.pedidoService,
+    required this.stockService,
     super.key,
   });
 
   final Cliente cliente;
   final PedidoService pedidoService;
+  final StockService stockService;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +74,7 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
             (_) => RegistrarPedidoScreen(
               cliente: cliente,
               pedidoService: pedidoService,
+              stockService: stockService,
             ),
       ),
     );

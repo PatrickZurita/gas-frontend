@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../shared/action_button.dart';
 import '../../pedidos/pedido_service.dart';
+import '../../stock/services/stock_service.dart';
 import '../cliente_service.dart';
 import '../models/cliente.dart';
+import '../models/cliente_reciente.dart';
 import 'cliente_seleccionado_screen.dart';
 import 'crear_cliente_screen.dart';
 
@@ -12,11 +14,13 @@ class BuscarClienteScreen extends StatefulWidget {
   const BuscarClienteScreen({
     required this.clienteService,
     required this.pedidoService,
+    required this.stockService,
     super.key,
   });
 
   final ClienteService clienteService;
   final PedidoService pedidoService;
+  final StockService stockService;
 
   @override
   State<BuscarClienteScreen> createState() => _BuscarClienteScreenState();
@@ -25,10 +29,19 @@ class BuscarClienteScreen extends StatefulWidget {
 class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
   final TextEditingController _queryController = TextEditingController();
 
+  late Future<List<ClienteReciente>> _clientesRecientesFuture;
   List<Cliente> _clientes = const [];
   bool _isLoading = false;
   bool _searched = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientesRecientesFuture = widget.clienteService.obtenerClientesRecientes(
+      limit: 5,
+    );
+  }
 
   @override
   void dispose() {
@@ -106,6 +119,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
             (_) => ClienteSeleccionadoScreen(
               cliente: cliente,
               pedidoService: widget.pedidoService,
+              stockService: widget.stockService,
             ),
       ),
     );
@@ -145,6 +159,15 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
               onPressed: _isLoading ? null : _buscar,
             ),
             const SizedBox(height: 16),
+            if (!_searched && _errorMessage == null) ...[
+              _ClientesRecientesSection(
+                future: _clientesRecientesFuture,
+                onTap:
+                    (clienteReciente) =>
+                        _openClienteSeleccionado(clienteReciente.toCliente()),
+              ),
+              const SizedBox(height: 16),
+            ],
             if (_errorMessage != null) _MessageBox(message: _errorMessage!),
             if (_isLoading)
               const Padding(
@@ -184,6 +207,123 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
           ),
         )
         .toList();
+  }
+}
+
+class _ClientesRecientesSection extends StatelessWidget {
+  const _ClientesRecientesSection({required this.future, required this.onTap});
+
+  final Future<List<ClienteReciente>> future;
+  final ValueChanged<ClienteReciente> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ClienteReciente>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _RecentFrame(
+            child: Column(
+              children: [
+                SizedBox(height: 8),
+                CircularProgressIndicator(),
+                SizedBox(height: 12),
+                Text(
+                  'Cargando clientes recientes...',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const _RecentFrame(
+            child: _MessageBox(
+              message: 'No se pudo cargar clientes recientes.',
+            ),
+          );
+        }
+
+        final recientes = snapshot.data ?? const <ClienteReciente>[];
+        return _RecentFrame(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Clientes recientes',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              if (recientes.isEmpty)
+                const Text(
+                  'Aun no hay clientes recientes.',
+                  style: TextStyle(fontSize: 18),
+                )
+              else
+                ...recientes.take(5).map(
+                  (cliente) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _ClienteRecienteItem(
+                      cliente: cliente,
+                      onTap: () => onTap(cliente),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RecentFrame extends StatelessWidget {
+  const _RecentFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ClienteRecienteItem extends StatelessWidget {
+  const _ClienteRecienteItem({required this.cliente, required this.onTap});
+
+  final ClienteReciente cliente;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(10),
+      child: ListTile(
+        minVerticalPadding: 14,
+        leading: const Icon(Icons.history, size: 30),
+        title: Text(
+          cliente.direccion,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          cliente.telefono,
+          style: const TextStyle(fontSize: 17),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 30),
+        onTap: onTap,
+      ),
+    );
   }
 }
 
