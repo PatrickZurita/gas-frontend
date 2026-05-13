@@ -13,12 +13,14 @@ class RegistrarPedidoScreen extends StatefulWidget {
     required this.cliente,
     required this.pedidoService,
     required this.stockService,
+    this.onPedidoGuardado,
     super.key,
   });
 
   final Cliente cliente;
   final PedidoService pedidoService;
   final StockService stockService;
+  final Future<void> Function()? onPedidoGuardado;
 
   @override
   State<RegistrarPedidoScreen> createState() => _RegistrarPedidoScreenState();
@@ -77,6 +79,10 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   }
 
   Future<void> _guardarPedido() async {
+    if (_isSaving) {
+      return;
+    }
+
     final cantidad = int.tryParse(_cantidadController.text.trim());
     final precioCentavos = _parseSolesToCentavos(_precioController.text);
 
@@ -120,13 +126,21 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
       if (!mounted) {
         return;
       }
+      await widget.onPedidoGuardado?.call();
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _saved = true;
-        _message =
-            _pagado
-                ? 'Pedido guardado como pagado.'
-                : 'Pedido guardado como no pagado.';
+        _message = 'Pedido guardado';
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pedido guardado'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -174,41 +188,27 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               telefono: widget.cliente.telefono,
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _cantidadController,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(fontSize: 22),
-                    decoration: const InputDecoration(
-                      labelText: 'Balones',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.propane_tank_outlined),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: _precioController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.done,
-                    style: const TextStyle(fontSize: 22),
-                    decoration: const InputDecoration(
-                      labelText: 'Precio',
-                      hintText: '55',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
-                    onSubmitted: (_) => _guardarPedido(),
-                  ),
-                ),
-              ],
+            _CantidadBalonesControl(
+              controller: _cantidadController,
+              enabled: !_isSaving,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _precioController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              textInputAction: TextInputAction.done,
+              style: const TextStyle(fontSize: 22),
+              decoration: const InputDecoration(
+                labelText: 'Precio por balon',
+                hintText: '55',
+                helperText: 'No escribas el total',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.payments_outlined),
+              ),
+              onSubmitted: (_) => _guardarPedido(),
+              enabled: !_isSaving,
             ),
             const SizedBox(height: 16),
             _CatalogSegmented(
@@ -374,6 +374,129 @@ class _CatalogSegmented extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CantidadBalonesControl extends StatefulWidget {
+  const _CantidadBalonesControl({
+    required this.controller,
+    required this.enabled,
+  });
+
+  final TextEditingController controller;
+  final bool enabled;
+
+  @override
+  State<_CantidadBalonesControl> createState() =>
+      _CantidadBalonesControlState();
+}
+
+class _CantidadBalonesControlState extends State<_CantidadBalonesControl> {
+  int get _cantidad => int.tryParse(widget.controller.text.trim()) ?? 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final cantidad = _cantidad.clamp(1, 999);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.propane_tank_outlined, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Balones',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _QuantityButton(
+                icon: Icons.remove,
+                onPressed:
+                    widget.enabled && cantidad > 1
+                        ? () => _setCantidad(cantidad - 1)
+                        : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: TextField(
+                    controller: widget.controller,
+                    enabled: widget.enabled,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _QuantityButton(
+                icon: Icons.add,
+                onPressed:
+                    widget.enabled ? () => _setCantidad(cantidad + 1) : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setCantidad(int value) {
+    widget.controller.text = value.clamp(1, 999).toString();
+    setState(() {});
+  }
+}
+
+class _QuantityButton extends StatelessWidget {
+  const _QuantityButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Icon(icon, size: 34),
+      ),
     );
   }
 }

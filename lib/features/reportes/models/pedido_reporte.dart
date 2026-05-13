@@ -4,6 +4,9 @@ class PedidoReporte {
     required this.clienteId,
     required this.clienteAlias,
     required this.cantidadBalones,
+    required this.marcaBalon,
+    required this.tipoBalon,
+    required this.precioUnitarioCentavos,
     required this.montoTotalCentavos,
     required this.montoPendienteCentavos,
     required this.pagado,
@@ -15,6 +18,9 @@ class PedidoReporte {
   final int clienteId;
   final String clienteAlias;
   final int cantidadBalones;
+  final String marcaBalon;
+  final String tipoBalon;
+  final int? precioUnitarioCentavos;
   final int montoTotalCentavos;
   final int montoPendienteCentavos;
   final bool pagado;
@@ -27,6 +33,9 @@ class PedidoReporte {
       clienteId: json['cliente_id'] as int,
       clienteAlias: json['cliente_alias'] as String,
       cantidadBalones: json['cantidad_balones'] as int,
+      marcaBalon: json['marca_balon'] as String? ?? 'PETROPERU',
+      tipoBalon: json['tipo_balon'] as String? ?? 'NORMAL',
+      precioUnitarioCentavos: json['precio_unitario_centavos'] as int?,
       montoTotalCentavos: json['monto_total_centavos'] as int,
       montoPendienteCentavos: json['monto_pendiente_centavos'] as int,
       pagado: json['pagado'] as bool,

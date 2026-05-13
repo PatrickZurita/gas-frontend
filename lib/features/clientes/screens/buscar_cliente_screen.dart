@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
@@ -15,12 +17,14 @@ class BuscarClienteScreen extends StatefulWidget {
     required this.clienteService,
     required this.pedidoService,
     required this.stockService,
+    this.onPedidoGuardado,
     super.key,
   });
 
   final ClienteService clienteService;
   final PedidoService pedidoService;
   final StockService stockService;
+  final Future<void> Function()? onPedidoGuardado;
 
   @override
   State<BuscarClienteScreen> createState() => _BuscarClienteScreenState();
@@ -29,11 +33,15 @@ class BuscarClienteScreen extends StatefulWidget {
 class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
   final TextEditingController _queryController = TextEditingController();
 
+  static const int _minSearchLength = 2;
+
   late Future<List<ClienteReciente>> _clientesRecientesFuture;
   List<Cliente> _clientes = const [];
   bool _isLoading = false;
   bool _searched = false;
   String? _errorMessage;
+  Timer? _debounce;
+  int _searchToken = 0;
 
   @override
   void initState() {
@@ -45,21 +53,60 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _queryController.dispose();
     super.dispose();
   }
 
-  Future<void> _buscar() async {
+  void _onQueryChanged(String value) {
+    final query = _queryController.text.trim();
+    _debounce?.cancel();
+
+    if (query.isEmpty) {
+      setState(() {
+        _searched = false;
+        _clientes = const [];
+        _errorMessage = null;
+      });
+      return;
+    }
+
+    if (query.length < _minSearchLength) {
+      setState(() {
+        _searched = false;
+        _clientes = const [];
+        _errorMessage = null;
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _buscar(auto: true);
+    });
+  }
+
+  Future<void> _buscar({bool auto = false}) async {
     final query = _queryController.text.trim();
     if (query.isEmpty) {
       setState(() {
         _searched = false;
         _clientes = const [];
-        _errorMessage = 'Escribe una direccion o telefono.';
+        _errorMessage = auto ? null : 'Escribe una direccion o telefono.';
       });
       return;
     }
 
+    if (query.length < _minSearchLength) {
+      setState(() {
+        _searched = false;
+        _clientes = const [];
+        _errorMessage =
+            auto ? null : 'Escribe al menos $_minSearchLength caracteres.';
+      });
+      return;
+    }
+
+    final token = ++_searchToken;
     setState(() {
       _isLoading = true;
       _searched = true;
@@ -68,14 +115,14 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
 
     try {
       final clientes = await widget.clienteService.buscarClientes(query);
-      if (!mounted) {
+      if (!mounted || token != _searchToken) {
         return;
       }
       setState(() {
         _clientes = clientes;
       });
     } on ApiException catch (error) {
-      if (!mounted) {
+      if (!mounted || token != _searchToken) {
         return;
       }
       setState(() {
@@ -83,7 +130,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
         _errorMessage = error.message;
       });
     } catch (_) {
-      if (!mounted) {
+      if (!mounted || token != _searchToken) {
         return;
       }
       setState(() {
@@ -91,7 +138,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
         _errorMessage = 'No se pudo buscar. Intenta otra vez.';
       });
     } finally {
-      if (mounted) {
+      if (mounted && token == _searchToken) {
         setState(() {
           _isLoading = false;
         });
@@ -120,6 +167,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
               cliente: cliente,
               pedidoService: widget.pedidoService,
               stockService: widget.stockService,
+              onPedidoGuardado: widget.onPedidoGuardado,
             ),
       ),
     );
@@ -146,9 +194,11 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
               style: const TextStyle(fontSize: 20),
               decoration: const InputDecoration(
                 labelText: 'Direccion, alias o telefono',
+                helperText: 'Busca desde 2 letras',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.search),
               ),
+              onChanged: _onQueryChanged,
               onSubmitted: (_) => _buscar(),
             ),
             const SizedBox(height: 16),
@@ -261,15 +311,17 @@ class _ClientesRecientesSection extends StatelessWidget {
                   style: TextStyle(fontSize: 18),
                 )
               else
-                ...recientes.take(5).map(
-                  (cliente) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _ClienteRecienteItem(
-                      cliente: cliente,
-                      onTap: () => onTap(cliente),
+                ...recientes
+                    .take(5)
+                    .map(
+                      (cliente) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ClienteRecienteItem(
+                          cliente: cliente,
+                          onTap: () => onTap(cliente),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
             ],
           ),
         );
@@ -316,10 +368,7 @@ class _ClienteRecienteItem extends StatelessWidget {
           cliente.direccion,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
-        subtitle: Text(
-          cliente.telefono,
-          style: const TextStyle(fontSize: 17),
-        ),
+        subtitle: Text(cliente.telefono, style: const TextStyle(fontSize: 17)),
         trailing: const Icon(Icons.chevron_right, size: 30),
         onTap: onTap,
       ),

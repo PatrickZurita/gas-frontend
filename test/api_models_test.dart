@@ -250,6 +250,9 @@ void main() {
         'cliente_id': 1,
         'cliente_alias': 'Las Higueras 371',
         'cantidad_balones': 2,
+        'marca_balon': 'PETROPERU',
+        'tipo_balon': 'NORMAL',
+        'precio_unitario_centavos': 5500,
         'monto_total_centavos': 11000,
         'monto_pendiente_centavos': 0,
         'pagado': true,
@@ -260,6 +263,9 @@ void main() {
       expect(pedido.id, 1);
       expect(pedido.clienteAlias, 'Las Higueras 371');
       expect(pedido.cantidadBalones, 2);
+      expect(pedido.marcaBalon, 'PETROPERU');
+      expect(pedido.tipoBalon, 'NORMAL');
+      expect(pedido.precioUnitarioCentavos, 5500);
       expect(pedido.montoTotalCentavos, 11000);
       expect(pedido.montoPendienteCentavos, 0);
       expect(pedido.pagado, isTrue);
@@ -297,6 +303,45 @@ void main() {
       expect(reporte.montoPendienteCentavos, 5500);
       expect(reporte.pedidos, hasLength(1));
       expect(reporte.isEmpty, isFalse);
+    });
+
+    test('keeps daily summary totals in centavos without extra conversion', () {
+      final pedidos = List.generate(
+        6,
+        (index) => {
+          'id': index + 1,
+          'cliente_id': index + 1,
+          'cliente_alias': 'Cliente ${index + 1}',
+          'cantidad_balones': 1,
+          'marca_balon': 'PETROPERU',
+          'tipo_balon': 'NORMAL',
+          'precio_unitario_centavos': 5500,
+          'monto_total_centavos': 5500,
+          'monto_pendiente_centavos': index < 3 ? 0 : 5500,
+          'pagado': index < 3,
+          'fecha_entrega': '2026-01-16',
+          'created_at': '2026-01-16T10:45:03.084894-05:00',
+        },
+      );
+
+      final reporte = ReporteDiario.fromJson({
+        'fecha': '2026-01-16',
+        'pedidos_count': 6,
+        'balones_vendidos': 6,
+        'monto_total_centavos': 33000,
+        'monto_pagado_centavos': 16500,
+        'monto_pendiente_centavos': 16500,
+        'pedidos': pedidos,
+      });
+
+      expect(reporte.pedidosCount, 6);
+      expect(reporte.balonesVendidos, 6);
+      expect(reporte.montoTotalCentavos, 33000);
+      expect(
+        reporte.montoPagadoCentavos + reporte.montoPendienteCentavos,
+        reporte.montoTotalCentavos,
+      );
+      expect(formatSolesFromCentavos(reporte.montoTotalCentavos), 'S/ 330.00');
     });
 
     test('parses empty ReporteDiario', () {

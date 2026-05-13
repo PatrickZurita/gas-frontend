@@ -12,12 +12,14 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
     required this.cliente,
     required this.pedidoService,
     required this.stockService,
+    this.onPedidoGuardado,
     super.key,
   });
 
   final Cliente cliente;
   final PedidoService pedidoService;
   final StockService stockService;
+  final Future<void> Function()? onPedidoGuardado;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,7 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
               cliente: cliente,
               pedidoService: pedidoService,
               stockService: stockService,
+              onPedidoGuardado: onPedidoGuardado,
             ),
       ),
     );

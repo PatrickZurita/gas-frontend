@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
 import '../models/reporte_diario.dart';
 import '../money_format.dart';
+import '../screens/pedidos_dia_screen.dart';
 import '../services/reportes_service.dart';
 
 class ResumenDiaSection extends StatefulWidget {
@@ -76,7 +77,12 @@ class _ResumenDiaSectionState extends State<ResumenDiaSection> {
           return const SizedBox.shrink();
         }
 
-        return _ResumenContent(resumen: resumen);
+        return _ResumenFrame(
+          child: _ResumenContent(
+            resumen: resumen,
+            reportesService: widget.reportesService,
+          ),
+        );
       },
     );
   }
@@ -90,19 +96,33 @@ class _ResumenDiaSectionState extends State<ResumenDiaSection> {
 }
 
 class _ResumenContent extends StatelessWidget {
-  const _ResumenContent({required this.resumen});
+  const _ResumenContent({required this.resumen, required this.reportesService});
 
   final ReporteDiario resumen;
+  final ReportesService reportesService;
 
   @override
   Widget build(BuildContext context) {
-    return _ResumenFrame(
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _openPedidosDia(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Resumen del dia',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Resumen del dia',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.primary,
+                size: 30,
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           _MetricBlock(
@@ -157,11 +177,23 @@ class _ResumenContent extends StatelessWidget {
           ] else ...[
             const SizedBox(height: 12),
             Text(
-              '${resumen.pedidosCount} pedidos registrados hoy.',
+              '${resumen.pedidosCount} pedidos registrados hoy. Toca para verlos.',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  void _openPedidosDia(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder:
+            (_) => PedidosDiaScreen(
+              reportesService: reportesService,
+              initialReporte: resumen,
+            ),
       ),
     );
   }

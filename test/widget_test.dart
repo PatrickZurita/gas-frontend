@@ -32,7 +32,8 @@ void main() {
     expect(find.text('Resumen del dia'), findsOneWidget);
     expect(find.text('Registrar pedido'), findsOneWidget);
     expect(find.text('Buscar'), findsOneWidget);
-    expect(find.text('Historial'), findsOneWidget);
+    expect(find.text('Pedidos'), findsWidgets);
+    expect(find.text('Historial'), findsNothing);
     await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
     expect(find.text('Stock de hoy'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Deudas'), 300);
@@ -50,6 +51,21 @@ void main() {
 
     expect(find.text('Busca por direccion o telefono'), findsOneWidget);
     expect(find.text('Crear nuevo cliente'), findsOneWidget);
+  });
+
+  testWidgets('home opens orders screen from Pedidos button', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.withData());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pedidos de hoy'), findsWidgets);
+    expect(find.text('Clientes recientes'), findsNothing);
+    expect(find.text('Las Higueras 371'), findsOneWidget);
+    expect(find.text('Pendiente'), findsWidgets);
   });
 
   testWidgets('home shows empty reports summary', (WidgetTester tester) async {
@@ -108,7 +124,57 @@ void main() {
     expect(find.text('S/ 165.00'), findsOneWidget);
     expect(find.text('S/ 110.00'), findsOneWidget);
     expect(find.text('S/ 55.00'), findsOneWidget);
-    expect(find.text('2 pedidos registrados hoy.'), findsOneWidget);
+    expect(
+      find.text('2 pedidos registrados hoy. Toca para verlos.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tapping reports summary opens day orders list', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, reportesService: _FakeReportesService.withData());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Resumen del dia'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pedidos de hoy'), findsWidgets);
+    expect(find.text('Todos'), findsOneWidget);
+    expect(find.text('Pagados'), findsOneWidget);
+    expect(find.text('Pendientes'), findsOneWidget);
+    expect(find.text('Las Higueras 371'), findsOneWidget);
+  });
+
+  testWidgets('day orders filters paid and pending orders', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(
+      tester,
+      reportesService: _FakeReportesService.withMixedOrders(),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pedido pagado'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Pedido pendiente'), 300);
+    expect(find.text('Pedido pendiente'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pagados'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pedido pagado'), findsOneWidget);
+    expect(find.text('Pedido pendiente'), findsNothing);
+
+    await tester.tap(find.text('Pendientes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pedido pagado'), findsNothing);
+    expect(find.text('Pedido pendiente'), findsOneWidget);
   });
 
   testWidgets('home shows reports error state', (WidgetTester tester) async {
@@ -161,10 +227,11 @@ void main() {
   });
 
   testWidgets('client search selects a result', (WidgetTester tester) async {
+    final clienteService = _FakeClienteService.withResults();
     await tester.pumpWidget(
       MaterialApp(
         home: _SearchHost(
-          clienteService: _FakeClienteService.withResults(),
+          clienteService: clienteService,
           pedidoService: _FakePedidoService(),
           stockService: _FakeStockService.notStarted(),
         ),
@@ -182,6 +249,33 @@ void main() {
 
     expect(find.text('Cliente seleccionado'), findsWidgets);
     expect(find.text('999888777'), findsOneWidget);
+    expect(clienteService.lastQuery, 'Higueras');
+  });
+
+  testWidgets('client search suggests results while typing', (
+    WidgetTester tester,
+  ) async {
+    final clienteService = _FakeClienteService.withResults();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _SearchHost(
+          clienteService: clienteService,
+          pedidoService: _FakePedidoService(),
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'L');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(clienteService.searchCalls, 0);
+
+    await tester.enterText(find.byType(TextField), 'Las');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(clienteService.lastQuery, 'Las');
+    expect(find.text('Las Higueras 371'), findsOneWidget);
   });
 
   testWidgets('client search shows empty recent clients state', (
@@ -269,15 +363,32 @@ void main() {
     expect(find.text('Nuevo pedido'), findsOneWidget);
     expect(find.widgetWithText(TextField, '1'), findsOneWidget);
     expect(find.text('Petroperu'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Precio por balon'), findsOneWidget);
+    expect(find.text('No escribas el total'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, '2'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.remove));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, '1'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Precio por balon'),
+      '55',
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
     expect(find.text('Normal'), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Precio'), '55');
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pump();
     await tester.tap(find.text('Guardar pedido').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Pedido guardado como pagado.'), findsOneWidget);
+    expect(find.text('Pedido guardado'), findsOneWidget);
+    expect(find.text('Cliente seleccionado'), findsWidgets);
     expect(pedidoService.lastRequest?.clienteId, 1);
     expect(pedidoService.lastRequest?.cantidadBalones, 1);
     expect(pedidoService.lastRequest?.marcaBalon, 'PETROPERU');
@@ -286,6 +397,48 @@ void main() {
     expect(pedidoService.lastRequest?.montoTotalCentavos, 5500);
     expect(pedidoService.lastRequest?.montoPendienteCentavos, 0);
     expect(pedidoService.lastRequest?.pagado, isTrue);
+    expect(pedidoService.createCalls, 1);
+  });
+
+  testWidgets('order form prevents double submit while saving', (
+    WidgetTester tester,
+  ) async {
+    final pedidoService = _FakePedidoService(
+      delay: const Duration(milliseconds: 150),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ClienteSeleccionadoScreen(
+          cliente: const Cliente(
+            id: 1,
+            alias: 'Las Higueras 371',
+            telefono: '999888777',
+          ),
+          pedidoService: pedidoService,
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Registrar pedido'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Precio por balon'),
+      '55',
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pump();
+
+    final saveButton = find.text('Guardar pedido').last;
+    await tester.tap(saveButton);
+    await tester.tap(saveButton);
+    await tester.pump();
+
+    expect(find.text('Guardando...'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(pedidoService.createCalls, 1);
   });
 
   testWidgets('selected client opens history and shows orders', (
@@ -412,9 +565,13 @@ class _FakeClienteService implements ClienteService {
 
   final List<Cliente> _clientes;
   final List<ClienteReciente> _recientes;
+  int searchCalls = 0;
+  String? lastQuery;
 
   @override
   Future<List<Cliente>> buscarClientes(String query, {int limit = 10}) async {
+    searchCalls++;
+    lastQuery = query;
     return _clientes;
   }
 
@@ -429,16 +586,19 @@ class _FakeClienteService implements ClienteService {
   }
 
   @override
-  Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5}) async {
+  Future<List<ClienteReciente>> obtenerClientesRecientes({
+    int limit = 5,
+  }) async {
     return _recientes.take(limit).toList();
   }
 }
 
 class _FakePedidoService implements PedidoService {
-  _FakePedidoService() : _history = const [];
+  _FakePedidoService({this.delay = Duration.zero}) : _history = const [];
 
   _FakePedidoService.withHistory()
-    : _history = [
+    : delay = Duration.zero,
+      _history = [
         Pedido(
           id: 2,
           clienteId: 1,
@@ -458,10 +618,16 @@ class _FakePedidoService implements PedidoService {
       ];
 
   PedidoCreateRequest? lastRequest;
+  int createCalls = 0;
+  final Duration delay;
   final List<Pedido> _history;
 
   @override
   Future<Pedido> crearPedido(PedidoCreateRequest request) async {
+    createCalls++;
+    if (delay != Duration.zero) {
+      await Future<void>.delayed(delay);
+    }
     lastRequest = request;
     return Pedido(
       id: 1,
@@ -631,6 +797,9 @@ class _FakeReportesService implements ReportesService {
             clienteId: 1,
             clienteAlias: 'Las Higueras 371',
             cantidadBalones: 1,
+            marcaBalon: 'PETROPERU',
+            tipoBalon: 'NORMAL',
+            precioUnitarioCentavos: 5500,
             montoTotalCentavos: 5500,
             montoPendienteCentavos: 5500,
             pagado: false,
@@ -648,6 +817,9 @@ class _FakeReportesService implements ReportesService {
             clienteId: 1,
             clienteAlias: 'Las Higueras 371',
             cantidadBalones: 1,
+            marcaBalon: 'PETROPERU',
+            tipoBalon: 'NORMAL',
+            precioUnitarioCentavos: 5500,
             montoTotalCentavos: 5500,
             montoPendienteCentavos: 5500,
             pagado: false,
@@ -655,6 +827,53 @@ class _FakeReportesService implements ReportesService {
             createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
           ),
         ],
+      ),
+      _resumenError = null,
+      _deudasError = null;
+
+  _FakeReportesService.withMixedOrders()
+    : _reporte = ReporteDiario(
+        fecha: DateTime.parse('2026-01-16'),
+        pedidosCount: 2,
+        balonesVendidos: 2,
+        montoTotalCentavos: 11000,
+        montoPagadoCentavos: 5500,
+        montoPendienteCentavos: 5500,
+        pedidos: [
+          PedidoReporte(
+            id: 1,
+            clienteId: 1,
+            clienteAlias: 'Pedido pagado',
+            cantidadBalones: 1,
+            marcaBalon: 'PETROPERU',
+            tipoBalon: 'NORMAL',
+            precioUnitarioCentavos: 5500,
+            montoTotalCentavos: 5500,
+            montoPendienteCentavos: 0,
+            pagado: true,
+            fechaEntrega: DateTime.parse('2026-01-16'),
+            createdAt: DateTime.parse('2026-01-16T10:00:00-05:00'),
+          ),
+          PedidoReporte(
+            id: 2,
+            clienteId: 2,
+            clienteAlias: 'Pedido pendiente',
+            cantidadBalones: 1,
+            marcaBalon: 'PETROPERU',
+            tipoBalon: 'NORMAL',
+            precioUnitarioCentavos: 5500,
+            montoTotalCentavos: 5500,
+            montoPendienteCentavos: 5500,
+            pagado: false,
+            fechaEntrega: DateTime.parse('2026-01-16'),
+            createdAt: DateTime.parse('2026-01-16T11:00:00-05:00'),
+          ),
+        ],
+      ),
+      _deudas = const DeudasResumen(
+        pedidosCount: 0,
+        montoPendienteCentavos: 0,
+        pedidos: [],
       ),
       _resumenError = null,
       _deudasError = null;
