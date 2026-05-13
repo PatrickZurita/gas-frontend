@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/metric_card.dart';
+import '../../../shared/summary_card.dart';
 import '../models/reporte_diario.dart';
 import '../money_format.dart';
 import '../screens/pedidos_dia_screen.dart';
@@ -38,29 +42,28 @@ class _ResumenDiaSectionState extends State<ResumenDiaSection> {
       future: _resumenFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _ResumenFrame(
-            child: Column(
-              children: [
-                SizedBox(height: 8),
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text('Cargando resumen...', style: TextStyle(fontSize: 18)),
-              ],
-            ),
+          return const LoadingCard(
+            message: 'Cargando resumen...',
+            icon: Icons.insights_outlined,
           );
         }
 
         if (snapshot.hasError) {
-          return _ResumenFrame(
+          return SummaryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Resumen del dia',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(_errorMessage(snapshot.error)),
+                MessageBox(
+                  message: _errorMessage(snapshot.error),
+                  type: MessageBoxType.error,
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _retry,
@@ -77,7 +80,7 @@ class _ResumenDiaSectionState extends State<ResumenDiaSection> {
           return const SizedBox.shrink();
         }
 
-        return _ResumenFrame(
+        return SummaryCard(
           child: _ResumenContent(
             resumen: resumen,
             reportesService: widget.reportesService,
@@ -111,10 +114,12 @@ class _ResumenContent extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Resumen del dia',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               Icon(
@@ -125,7 +130,7 @@ class _ResumenContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _MetricBlock(
+          MetricCard(
             label: 'Total vendido',
             value: formatSolesFromCentavos(resumen.montoTotalCentavos),
             primary: true,
@@ -134,14 +139,14 @@ class _ResumenContent extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _MetricBlock(
+                child: MetricCard(
                   label: 'Pagado',
                   value: formatSolesFromCentavos(resumen.montoPagadoCentavos),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _MetricBlock(
+                child: MetricCard(
                   label: 'Pendiente',
                   value: formatSolesFromCentavos(
                     resumen.montoPendienteCentavos,
@@ -154,14 +159,14 @@ class _ResumenContent extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _MetricBlock(
+                child: MetricCard(
                   label: 'Pedidos',
                   value: '${resumen.pedidosCount}',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _MetricBlock(
+                child: MetricCard(
                   label: 'Balones',
                   value: '${resumen.balonesVendidos}',
                 ),
@@ -170,15 +175,17 @@ class _ResumenContent extends StatelessWidget {
           ),
           if (resumen.isEmpty) ...[
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Aun no hay pedidos hoy.',
-              style: TextStyle(fontSize: 18),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ] else ...[
             const SizedBox(height: 12),
             Text(
               '${resumen.pedidosCount} pedidos registrados hoy. Toca para verlos.',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ],
@@ -199,72 +206,3 @@ class _ResumenContent extends StatelessWidget {
   }
 }
 
-class _ResumenFrame extends StatelessWidget {
-  const _ResumenFrame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _MetricBlock extends StatelessWidget {
-  const _MetricBlock({
-    required this.label,
-    required this.value,
-    this.primary = false,
-  });
-
-  final String label;
-  final String value;
-  final bool primary;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.all(primary ? 16 : 12),
-      decoration: BoxDecoration(
-        color:
-            primary ? colors.primaryContainer : colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: primary ? 18 : 15,
-              fontWeight: primary ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            alignment: Alignment.centerLeft,
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: primary ? 38 : 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

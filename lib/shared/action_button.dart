@@ -18,8 +18,14 @@ class ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final style =
         primary
-            ? ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(72))
-            : OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(64));
+            ? ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(72),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+            )
+            : OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(64),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+            );
 
     final child = Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -29,7 +35,7 @@ class ActionButton extends StatelessWidget {
         Flexible(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 20),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             textAlign: TextAlign.center,
           ),
         ),

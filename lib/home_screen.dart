@@ -10,6 +10,7 @@ import 'features/reportes/widgets/resumen_dia_section.dart';
 import 'features/stock/services/stock_service.dart';
 import 'features/stock/widgets/stock_hoy_section.dart';
 import 'shared/action_button.dart';
+import 'shared/section_title.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -41,25 +42,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Pedidos de gas')),
       body: SafeArea(
         child: RefreshIndicator(
+          color: colors.primary,
+          backgroundColor: colors.surface,
           onRefresh: _refreshHome,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             children: [
-              Text(
-                'Pedidos de gas',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Lo principal para trabajar hoy.',
-                style: Theme.of(context).textTheme.titleMedium,
+              const SectionTitle(
+                title: 'Pedidos de gas',
+                subtitle: 'Stock, pedidos y ventas de hoy.',
+                large: true,
               ),
               const SizedBox(height: 18),
               ActionButton(
@@ -89,14 +87,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 18),
-              ResumenDiaSection(
-                key: ValueKey('resumen-$_refreshVersion'),
-                reportesService: widget.reportesService,
-              ),
-              const SizedBox(height: 16),
               StockHoySection(
                 key: ValueKey('stock-$_refreshVersion'),
                 stockService: widget.stockService,
+              ),
+              const SizedBox(height: 16),
+              ResumenDiaSection(
+                key: ValueKey('resumen-$_refreshVersion'),
+                reportesService: widget.reportesService,
               ),
               const SizedBox(height: 16),
               DeudasPendientesSection(
@@ -150,7 +148,7 @@ class _CompactHomeButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 24),
-      label: Text(label, style: const TextStyle(fontSize: 18)),
+      label: Text(label, style: Theme.of(context).textTheme.titleMedium),
       style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56)),
     );
   }

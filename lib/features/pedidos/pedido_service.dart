@@ -5,7 +5,7 @@ import 'models/pedido_create_request.dart';
 abstract interface class PedidoService {
   Future<Pedido> crearPedido(PedidoCreateRequest request);
 
-  Future<List<Pedido>> listarPedidosPorCliente(int clienteId);
+  Future<List<Pedido>> listarPedidosPorCliente(String clienteId);
 }
 
 class ApiPedidoService implements PedidoService {
@@ -20,10 +20,10 @@ class ApiPedidoService implements PedidoService {
   }
 
   @override
-  Future<List<Pedido>> listarPedidosPorCliente(int clienteId) async {
+  Future<List<Pedido>> listarPedidosPorCliente(String clienteId) async {
     final json = await _apiClient.getJson(
       '/pedidos',
-      queryParameters: {'cliente_id': '$clienteId'},
+      queryParameters: {'cliente_id': clienteId},
     );
 
     final list = json as List<Object?>;

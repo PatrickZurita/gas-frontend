@@ -1,3 +1,5 @@
+import '../../../core/network/json_helpers.dart';
+
 class MovimientoStock {
   const MovimientoStock({
     required this.id,
@@ -9,21 +11,21 @@ class MovimientoStock {
     required this.createdAt,
   });
 
-  final int id;
+  final String id;
   final String tipo;
   final int cantidadDelta;
   final int stockResultante;
-  final int? pedidoId;
+  final String? pedidoId;
   final String? observacion;
   final DateTime createdAt;
 
   factory MovimientoStock.fromJson(Map<String, Object?> json) {
     return MovimientoStock(
-      id: json['id'] as int,
+      id: parseId(json['id']),
       tipo: json['tipo'] as String,
       cantidadDelta: json['cantidad_delta'] as int,
       stockResultante: json['stock_resultante'] as int,
-      pedidoId: json['pedido_id'] as int?,
+      pedidoId: parseIdNullable(json['pedido_id']),
       observacion: json['observacion'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );

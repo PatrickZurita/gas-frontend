@@ -14,7 +14,7 @@ abstract interface class ClienteService {
 
   Future<List<Cliente>> buscarClientes(String query, {int limit = 10});
 
-  Future<Cliente> obtenerCliente(int id);
+  Future<Cliente> obtenerCliente(String id);
 
   Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5});
 }
@@ -57,7 +57,7 @@ class ApiClienteService implements ClienteService {
   }
 
   @override
-  Future<Cliente> obtenerCliente(int id) async {
+  Future<Cliente> obtenerCliente(String id) async {
     final json = await _apiClient.getJson('/clientes/$id');
     return Cliente.fromJson(json as Map<String, Object?>);
   }

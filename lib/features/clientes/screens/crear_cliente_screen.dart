@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/action_button.dart';
+import '../../../shared/message_box.dart';
 import '../cliente_service.dart';
 import '../models/cliente_create_request.dart';
 
@@ -143,7 +144,11 @@ class _CrearClienteScreenState extends State<CrearClienteScreen> {
             ),
             const SizedBox(height: 16),
             if (_message != null)
-              _SaveMessage(message: _message!, isSuccess: _isSuccess),
+              MessageBox(
+                message: _message!,
+                type:
+                    _isSuccess ? MessageBoxType.success : MessageBoxType.error,
+              ),
             if (_message != null) const SizedBox(height: 16),
             ActionButton(
               label: _isSaving ? 'Guardando...' : 'Guardar cliente',
@@ -154,27 +159,6 @@ class _CrearClienteScreenState extends State<CrearClienteScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SaveMessage extends StatelessWidget {
-  const _SaveMessage({required this.message, required this.isSuccess});
-
-  final String message;
-  final bool isSuccess;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isSuccess ? colors.primaryContainer : colors.errorContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(message, style: const TextStyle(fontSize: 18)),
     );
   }
 }

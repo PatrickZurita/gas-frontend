@@ -142,7 +142,7 @@ void main() {
 
       final pedido = await service.crearPedido(
         const PedidoCreateRequest(
-          clienteId: 2,
+          clienteId: '2',
           cantidadBalones: 1,
           pagado: true,
           marcaBalon: 'PETROPERU',
@@ -197,7 +197,7 @@ void main() {
         ),
       );
 
-      final pedidos = await service.listarPedidosPorCliente(1);
+      final pedidos = await service.listarPedidosPorCliente('1');
 
       expect(capturedRequest.method, 'GET');
       expect(capturedRequest.url.path, '/pedidos');

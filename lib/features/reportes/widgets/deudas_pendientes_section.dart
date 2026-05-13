@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/summary_card.dart';
 import '../models/deudas_resumen.dart';
 import '../money_format.dart';
 import '../services/reportes_service.dart';
@@ -38,29 +41,28 @@ class _DeudasPendientesSectionState extends State<DeudasPendientesSection> {
       future: _deudasFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _DeudasFrame(
-            child: Column(
-              children: [
-                SizedBox(height: 8),
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text('Cargando deudas...', style: TextStyle(fontSize: 18)),
-              ],
-            ),
+          return const LoadingCard(
+            message: 'Cargando deudas...',
+            icon: Icons.account_balance_wallet_outlined,
           );
         }
 
         if (snapshot.hasError) {
-          return _DeudasFrame(
+          return SummaryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Deudas pendientes',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(_errorMessage(snapshot.error)),
+                MessageBox(
+                  message: _errorMessage(snapshot.error),
+                  type: MessageBoxType.error,
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _retry,
@@ -97,7 +99,7 @@ class _DeudasContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _DeudasFrame(
+    return SummaryCard(
       child: Row(
         children: [
           Expanded(
@@ -178,27 +180,6 @@ class _DeudasContent extends StatelessWidget {
   }
 }
 
-class _DeudasFrame extends StatelessWidget {
-  const _DeudasFrame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: child,
-    );
-  }
-}
-
 class _DebtRow extends StatelessWidget {
   const _DebtRow({
     required this.clienteAlias,
@@ -213,6 +194,7 @@ class _DebtRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -227,21 +209,18 @@ class _DebtRow extends StatelessWidget {
               children: [
                 Text(
                   clienteAlias,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text('$balones balones', style: const TextStyle(fontSize: 16)),
+                Text('$balones balones', style: text.titleMedium),
               ],
             ),
           ),
           const SizedBox(width: 10),
           Text(
             formatSolesFromCentavos(pendienteCentavos),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),

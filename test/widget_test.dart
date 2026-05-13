@@ -86,10 +86,10 @@ void main() {
 
     expect(find.text('Stock de hoy'), findsOneWidget);
     expect(
-      find.text('Todavia no se registro el stock del dia.'),
+      find.text('Todavia no se registro cuantos balones hay en el deposito.'),
       findsOneWidget,
     );
-    expect(find.text('Iniciar dia'), findsOneWidget);
+    expect(find.text('Registrar stock de hoy'), findsOneWidget);
   });
 
   testWidgets('home shows stock summary with data', (
@@ -97,13 +97,16 @@ void main() {
   ) async {
     await _pumpHome(tester, stockService: _FakeStockService.withData());
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
+    await tester.scrollUntilVisible(find.text('Balones disponibles'), 300);
 
+    expect(find.text('Balones disponibles'), findsOneWidget);
     expect(find.text('29'), findsOneWidget);
-    expect(find.textContaining('Inicio 30'), findsOneWidget);
-    expect(find.textContaining('Vendidos 1'), findsOneWidget);
-    expect(find.text('Agregar'), findsOneWidget);
-    expect(find.text('Ajustar'), findsOneWidget);
+    expect(find.text('Inicio'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
+    expect(find.text('Vendidos hoy'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Actualizar stock actual'), findsOneWidget);
+    expect(find.text('Agregar entrada'), findsOneWidget);
   });
 
   testWidgets('home shows stock error state', (WidgetTester tester) async {
@@ -347,7 +350,7 @@ void main() {
       MaterialApp(
         home: ClienteSeleccionadoScreen(
           cliente: const Cliente(
-            id: 1,
+            id: '1',
             alias: 'Las Higueras 371',
             telefono: '999888777',
           ),
@@ -389,7 +392,7 @@ void main() {
 
     expect(find.text('Pedido guardado'), findsOneWidget);
     expect(find.text('Cliente seleccionado'), findsWidgets);
-    expect(pedidoService.lastRequest?.clienteId, 1);
+    expect(pedidoService.lastRequest?.clienteId, '1');
     expect(pedidoService.lastRequest?.cantidadBalones, 1);
     expect(pedidoService.lastRequest?.marcaBalon, 'PETROPERU');
     expect(pedidoService.lastRequest?.tipoBalon, 'NORMAL');
@@ -411,7 +414,7 @@ void main() {
       MaterialApp(
         home: ClienteSeleccionadoScreen(
           cliente: const Cliente(
-            id: 1,
+            id: '1',
             alias: 'Las Higueras 371',
             telefono: '999888777',
           ),
@@ -448,7 +451,7 @@ void main() {
       MaterialApp(
         home: ClienteSeleccionadoScreen(
           cliente: const Cliente(
-            id: 1,
+            id: '1',
             alias: 'Las Higueras 371',
             telefono: '999888777',
           ),
@@ -464,8 +467,7 @@ void main() {
     expect(find.text('Historial del cliente'), findsOneWidget);
     expect(find.text('16/01/2026'), findsOneWidget);
     expect(find.text('S/ 110.00'), findsOneWidget);
-    expect(find.text('Si'), findsOneWidget);
-    expect(find.text('S/ 0.00'), findsOneWidget);
+    expect(find.text('Pagado'), findsOneWidget);
   });
 
   testWidgets('history shows empty message when client has no orders', (
@@ -475,7 +477,7 @@ void main() {
       MaterialApp(
         home: ClienteSeleccionadoScreen(
           cliente: const Cliente(
-            id: 1,
+            id: '1',
             alias: 'Las Higueras 371',
             telefono: '999888777',
           ),
@@ -544,7 +546,7 @@ class _CreateHost extends StatelessWidget {
 class _FakeClienteService implements ClienteService {
   _FakeClienteService.withResults()
     : _clientes = const [
-        Cliente(id: 1, alias: 'Las Higueras 371', telefono: '999888777'),
+        Cliente(id: '1', alias: 'Las Higueras 371', telefono: '999888777'),
       ],
       _recientes = const [];
 
@@ -552,7 +554,7 @@ class _FakeClienteService implements ClienteService {
     : _clientes = const [],
       _recientes = [
         ClienteReciente(
-          id: 1,
+          id: '1',
           alias: 'Las Higueras 371',
           telefono: '999888777',
           direccion: 'Las Higueras 371',
@@ -577,11 +579,11 @@ class _FakeClienteService implements ClienteService {
 
   @override
   Future<Cliente> crearCliente(ClienteCreateRequest request) async {
-    return Cliente(id: 2, alias: request.alias, telefono: request.telefono);
+    return Cliente(id: '2', alias: request.alias, telefono: request.telefono);
   }
 
   @override
-  Future<Cliente> obtenerCliente(int id) async {
+  Future<Cliente> obtenerCliente(String id) async {
     return _clientes.first;
   }
 
@@ -600,9 +602,9 @@ class _FakePedidoService implements PedidoService {
     : delay = Duration.zero,
       _history = [
         Pedido(
-          id: 2,
-          clienteId: 1,
-          direccionId: 1,
+          id: '2',
+          clienteId: '1',
+          direccionId: '1',
           createdAt: DateTime.parse('2026-01-16T10:33:46.613608-05:00'),
           fechaEntrega: DateTime.parse('2026-01-16'),
           cantidadBalones: 2,
@@ -630,9 +632,9 @@ class _FakePedidoService implements PedidoService {
     }
     lastRequest = request;
     return Pedido(
-      id: 1,
+      id: '1',
       clienteId: request.clienteId,
-      direccionId: 1,
+      direccionId: '1',
       createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
       fechaEntrega: DateTime.parse('2026-01-16'),
       cantidadBalones: request.cantidadBalones,
@@ -648,7 +650,7 @@ class _FakePedidoService implements PedidoService {
   }
 
   @override
-  Future<List<Pedido>> listarPedidosPorCliente(int clienteId) async {
+  Future<List<Pedido>> listarPedidosPorCliente(String clienteId) async {
     return _history;
   }
 }
@@ -793,8 +795,8 @@ class _FakeReportesService implements ReportesService {
         montoPendienteCentavos: 5500,
         pedidos: [
           PedidoReporte(
-            id: 1,
-            clienteId: 1,
+            id: '1',
+            clienteId: '1',
             clienteAlias: 'Las Higueras 371',
             cantidadBalones: 1,
             marcaBalon: 'PETROPERU',
@@ -813,8 +815,8 @@ class _FakeReportesService implements ReportesService {
         montoPendienteCentavos: 5500,
         pedidos: [
           PedidoReporte(
-            id: 1,
-            clienteId: 1,
+            id: '1',
+            clienteId: '1',
             clienteAlias: 'Las Higueras 371',
             cantidadBalones: 1,
             marcaBalon: 'PETROPERU',
@@ -841,8 +843,8 @@ class _FakeReportesService implements ReportesService {
         montoPendienteCentavos: 5500,
         pedidos: [
           PedidoReporte(
-            id: 1,
-            clienteId: 1,
+            id: '1',
+            clienteId: '1',
             clienteAlias: 'Pedido pagado',
             cantidadBalones: 1,
             marcaBalon: 'PETROPERU',
@@ -855,8 +857,8 @@ class _FakeReportesService implements ReportesService {
             createdAt: DateTime.parse('2026-01-16T10:00:00-05:00'),
           ),
           PedidoReporte(
-            id: 2,
-            clienteId: 2,
+            id: '2',
+            clienteId: '2',
             clienteAlias: 'Pedido pendiente',
             cantidadBalones: 1,
             marcaBalon: 'PETROPERU',

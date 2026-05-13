@@ -1,3 +1,4 @@
+import '../../../core/network/json_helpers.dart';
 import 'cliente.dart';
 
 class ClienteReciente {
@@ -10,7 +11,7 @@ class ClienteReciente {
     required this.ultimoTotalCentavos,
   });
 
-  final int id;
+  final String id;
   final String alias;
   final String telefono;
   final String direccion;
@@ -19,7 +20,7 @@ class ClienteReciente {
 
   factory ClienteReciente.fromJson(Map<String, Object?> json) {
     return ClienteReciente(
-      id: json['id'] as int,
+      id: parseId(json['id']),
       alias: json['alias'] as String,
       telefono: json['telefono'] as String,
       direccion: json['direccion'] as String,

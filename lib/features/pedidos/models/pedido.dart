@@ -1,3 +1,5 @@
+import '../../../core/network/json_helpers.dart';
+
 class Pedido {
   const Pedido({
     required this.id,
@@ -16,9 +18,9 @@ class Pedido {
     required this.montoPendienteCentavos,
   });
 
-  final int id;
-  final int clienteId;
-  final int direccionId;
+  final String id;
+  final String clienteId;
+  final String direccionId;
   final DateTime createdAt;
   final DateTime fechaEntrega;
   final int cantidadBalones;
@@ -33,9 +35,9 @@ class Pedido {
 
   factory Pedido.fromJson(Map<String, Object?> json) {
     return Pedido(
-      id: json['id'] as int,
-      clienteId: json['cliente_id'] as int,
-      direccionId: json['direccion_id'] as int,
+      id: parseId(json['id']),
+      clienteId: parseId(json['cliente_id']),
+      direccionId: parseId(json['direccion_id']),
       createdAt: DateTime.parse(json['created_at'] as String),
       fechaEntrega: DateTime.parse(json['fecha_entrega'] as String),
       cantidadBalones: json['cantidad_balones'] as int,

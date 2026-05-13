@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/data_chip.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/number_input_control.dart';
+import '../../../shared/summary_card.dart';
 import '../models/stock_requests.dart';
 import '../models/stock_resumen.dart';
 import '../services/stock_service.dart';
@@ -32,65 +37,87 @@ class _StockHoySectionState extends State<StockHoySection> {
   }
 
   Future<void> _iniciarDia() async {
-    final request = await showDialog<StockIniciarDiaRequest>(
+    final cantidad = await showDialog<int>(
       context: context,
       builder:
           (_) => const _StockNumberDialog(
-            title: 'Iniciar dia',
-            label: 'Balones al empezar',
-            confirmLabel: 'Iniciar dia',
+            title: 'Registrar stock de hoy',
+            description: 'Cuenta los balones del deposito y registra el total.',
+            confirmLabel: 'Guardar stock',
             icon: Icons.flag_outlined,
+            allowZero: true,
           ),
     );
-    if (request == null) {
+    if (cantidad == null) {
       return;
     }
 
-    await _runOperation(() => widget.stockService.iniciarDia(request));
+    await _runOperation(
+      () => widget.stockService.iniciarDia(
+        StockIniciarDiaRequest(fecha: DateTime.now(), stockInicial: cantidad),
+      ),
+      successMessage: 'Stock de hoy registrado',
+    );
   }
 
   Future<void> _registrarEntrada() async {
-    final request = await showDialog<StockEntradaRequest>(
+    final cantidad = await showDialog<int>(
       context: context,
       builder:
           (_) => const _StockNumberDialog(
             title: 'Agregar balones',
-            label: 'Balones recibidos',
+            description: 'Usa esto cuando llegaron balones al deposito.',
             confirmLabel: 'Guardar entrada',
             icon: Icons.add_circle_outline,
+            initialValue: 1,
           ),
     );
-    if (request == null) {
+    if (cantidad == null) {
       return;
     }
 
-    await _runOperation(() => widget.stockService.registrarEntrada(request));
+    await _runOperation(
+      () => widget.stockService.registrarEntrada(
+        StockEntradaRequest(fecha: DateTime.now(), cantidad: cantidad),
+      ),
+      successMessage: 'Entrada guardada',
+    );
   }
 
-  Future<void> _ajustarStock() async {
-    final request = await showDialog<StockAjusteRequest>(
+  Future<void> _ajustarStock(int? stockActual) async {
+    final cantidad = await showDialog<int>(
       context: context,
       builder:
-          (_) => const _StockNumberDialog(
-            title: 'Ajustar stock',
-            label: 'Balones fisicos ahora',
-            confirmLabel: 'Ajustar stock',
-            icon: Icons.tune,
+          (_) => _StockNumberDialog(
+            title: 'Actualizar stock actual',
+            description: 'Registra cuantos balones tienes fisicamente ahora.',
+            confirmLabel: 'Actualizar stock',
+            icon: Icons.fact_check_outlined,
+            initialValue: stockActual ?? 0,
             allowZero: true,
           ),
     );
-    if (request == null) {
+    if (cantidad == null) {
       return;
     }
 
-    await _runOperation(() => widget.stockService.ajustarStock(request));
+    await _runOperation(
+      () => widget.stockService.ajustarStock(
+        StockAjusteRequest(fecha: DateTime.now(), stockFisico: cantidad),
+      ),
+      successMessage: 'Stock actualizado',
+    );
   }
 
-  Future<void> _runOperation(Future<Object> Function() operation) async {
+  Future<void> _runOperation(
+    Future<Object> Function() operation, {
+    required String successMessage,
+  }) async {
     try {
       await operation();
       if (mounted) {
         _retry();
+        _showMessage(successMessage);
       }
     } on ApiException catch (error) {
       _showMessage(error.message);
@@ -114,34 +141,37 @@ class _StockHoySectionState extends State<StockHoySection> {
       future: _stockFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _StockFrame(
-            child: Column(
-              children: [
-                SizedBox(height: 8),
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text('Cargando stock...', style: TextStyle(fontSize: 18)),
-              ],
-            ),
+          return const LoadingCard(
+            message: 'Cargando stock...',
+            icon: Icons.inventory_2_outlined,
           );
         }
 
         if (snapshot.hasError) {
-          return _StockFrame(
+          return SummaryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Stock de hoy',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(_errorMessage(snapshot.error)),
+                MessageBox(
+                  message: _errorMessage(snapshot.error),
+                  type: MessageBoxType.error,
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _retry,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Reintentar'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    textStyle: const TextStyle(fontSize: 18),
+                  ),
                 ),
               ],
             ),
@@ -157,7 +187,7 @@ class _StockHoySectionState extends State<StockHoySection> {
           stock: stock,
           onIniciarDia: _iniciarDia,
           onRegistrarEntrada: _registrarEntrada,
-          onAjustarStock: _ajustarStock,
+          onAjustarStock: () => _ajustarStock(stock.stockActual),
         );
       },
     );
@@ -187,26 +217,39 @@ class _StockContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!stock.stockIniciado) {
-      return _StockFrame(
+      return SummaryCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Stock de hoy',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            const Row(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 30),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Stock de hoy',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             const Text(
-              'Todavia no se registro el stock del dia.',
+              'Todavia no se registro cuantos balones hay en el deposito.',
               style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Cuenta los balones y guarda el numero.',
+              style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 14),
             ElevatedButton.icon(
               onPressed: onIniciarDia,
               icon: const Icon(Icons.flag_outlined),
-              label: const Text('Iniciar dia'),
+              label: const Text('Registrar stock de hoy'),
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
+                minimumSize: const Size.fromHeight(64),
                 textStyle: const TextStyle(fontSize: 18),
               ),
             ),
@@ -215,7 +258,7 @@ class _StockContent extends StatelessWidget {
       );
     }
 
-    return _StockFrame(
+    return SummaryCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -224,7 +267,7 @@ class _StockContent extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'Stock de hoy',
+                  'Balones disponibles',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                 ),
               ),
@@ -239,28 +282,51 @@ class _StockContent extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Inicio ${stock.stockInicial ?? 0} · Vendidos ${stock.salidas} · Entradas ${stock.entradas} · Ajustes ${stock.ajustes}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            'Stock actual en deposito',
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onRegistrarEntrada,
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('Agregar'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onAjustarStock,
-                  icon: const Icon(Icons.tune),
-                  label: const Text('Ajustar'),
-                ),
-              ),
+              DataChip(label: 'Vendidos hoy', value: '${stock.salidas}'),
+              DataChip(label: 'Inicio', value: '${stock.stockInicial ?? 0}'),
+              if (stock.entradas > 0)
+                DataChip(label: 'Entradas', value: '${stock.entradas}'),
+              if (stock.ajustes > 0)
+                DataChip(label: 'Ajustes', value: '${stock.ajustes}'),
             ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onAjustarStock,
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Actualizar stock actual'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(60),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onRegistrarEntrada,
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Agregar entrada'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                textStyle: const TextStyle(fontSize: 17),
+              ),
+            ),
           ),
         ],
       ),
@@ -268,40 +334,21 @@ class _StockContent extends StatelessWidget {
   }
 }
 
-class _StockFrame extends StatelessWidget {
-  const _StockFrame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: child,
-    );
-  }
-}
-
 class _StockNumberDialog extends StatefulWidget {
   const _StockNumberDialog({
     required this.title,
-    required this.label,
+    required this.description,
     required this.confirmLabel,
     required this.icon,
+    this.initialValue = 0,
     this.allowZero = false,
   });
 
   final String title;
-  final String label;
+  final String description;
   final String confirmLabel;
   final IconData icon;
+  final int initialValue;
   final bool allowZero;
 
   @override
@@ -309,14 +356,20 @@ class _StockNumberDialog extends StatefulWidget {
 }
 
 class _StockNumberDialogState extends State<_StockNumberDialog> {
-  final TextEditingController _cantidadController = TextEditingController();
-  final TextEditingController _observacionController = TextEditingController();
+  late final TextEditingController _cantidadController;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cantidadController = TextEditingController(
+      text: widget.initialValue.toString(),
+    );
+  }
 
   @override
   void dispose() {
     _cantidadController.dispose();
-    _observacionController.dispose();
     super.dispose();
   }
 
@@ -334,35 +387,7 @@ class _StockNumberDialogState extends State<_StockNumberDialog> {
       return;
     }
 
-    final fecha = DateTime.now();
-    final observacion = _observacionController.text.trim();
-    final note = observacion.isEmpty ? null : observacion;
-
-    if (widget.title == 'Iniciar dia') {
-      Navigator.of(context).pop(
-        StockIniciarDiaRequest(
-          fecha: fecha,
-          stockInicial: cantidad,
-          observacion: note,
-        ),
-      );
-    } else if (widget.title == 'Agregar balones') {
-      Navigator.of(context).pop(
-        StockEntradaRequest(
-          fecha: fecha,
-          cantidad: cantidad,
-          observacion: note,
-        ),
-      );
-    } else {
-      Navigator.of(context).pop(
-        StockAjusteRequest(
-          fecha: fecha,
-          stockFisico: cantidad,
-          observacion: note,
-        ),
-      );
-    }
+    Navigator.of(context).pop(cantidad);
   }
 
   @override
@@ -371,28 +396,21 @@ class _StockNumberDialogState extends State<_StockNumberDialog> {
       title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
+          Text(widget.description, style: const TextStyle(fontSize: 17)),
+          const SizedBox(height: 16),
+          NumberInputControl(
             controller: _cantidadController,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            style: const TextStyle(fontSize: 22),
-            decoration: InputDecoration(
-              labelText: widget.label,
-              border: const OutlineInputBorder(),
-              prefixIcon: Icon(widget.icon),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _observacionController,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'Observacion opcional',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (_) => _submit(),
+            label: 'Cantidad',
+            icon: widget.icon,
+            minValue: widget.allowZero ? 0 : 1,
+            maxValue: 9999,
+            onChanged: () {
+              setState(() {
+                _error = null;
+              });
+            },
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
@@ -413,3 +431,4 @@ class _StockNumberDialogState extends State<_StockNumberDialog> {
     );
   }
 }
+

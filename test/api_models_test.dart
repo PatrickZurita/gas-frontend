@@ -14,6 +14,84 @@ import 'package:gas_frontend/features/stock/models/stock_requests.dart';
 import 'package:gas_frontend/features/stock/models/stock_resumen.dart';
 
 void main() {
+  group('ID migration (int -> String)', () {
+    test('Cliente normalizes int id from PostgreSQL to String', () {
+      final cliente = Cliente.fromJson({
+        'id': 123,
+        'alias': 'Test',
+        'telefono': '999999999',
+      });
+      expect(cliente.id, '123');
+      expect(cliente.id, isA<String>());
+    });
+
+    test('Cliente accepts string UUID from DynamoDB', () {
+      final cliente = Cliente.fromJson({
+        'id': 'a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6',
+        'alias': 'Test',
+        'telefono': '999999999',
+      });
+      expect(cliente.id, 'a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6');
+      expect(cliente.id, isA<String>());
+    });
+
+    test('Pedido normalizes int ids from PostgreSQL to String', () {
+      final pedido = Pedido.fromJson({
+        'id': 7,
+        'cliente_id': 8,
+        'direccion_id': 9,
+        'created_at': '2026-01-16T10:00:00-05:00',
+        'fecha_entrega': '2026-01-16',
+        'cantidad_balones': 1,
+        'total_soles': 55.0,
+        'pagado': true,
+        'saldo_pendiente': 0,
+        'monto_total_centavos': 5500,
+      });
+      expect(pedido.id, '7');
+      expect(pedido.clienteId, '8');
+      expect(pedido.direccionId, '9');
+    });
+
+    test('Pedido accepts string UUID ids from DynamoDB', () {
+      final pedido = Pedido.fromJson({
+        'id': 'uuid-pedido',
+        'cliente_id': 'uuid-cliente',
+        'direccion_id': 'uuid-direccion',
+        'created_at': '2026-01-16T10:00:00-05:00',
+        'fecha_entrega': '2026-01-16',
+        'cantidad_balones': 1,
+        'total_soles': 55.0,
+        'pagado': true,
+        'saldo_pendiente': 0,
+        'monto_total_centavos': 5500,
+      });
+      expect(pedido.id, 'uuid-pedido');
+      expect(pedido.clienteId, 'uuid-cliente');
+      expect(pedido.direccionId, 'uuid-direccion');
+    });
+
+    test('PedidoCreateRequest.toJson sends int for numeric clienteId', () {
+      const request = PedidoCreateRequest(
+        clienteId: '42',
+        cantidadBalones: 1,
+        pagado: true,
+      );
+      expect(request.toJson()['cliente_id'], 42);
+      expect(request.toJson()['cliente_id'], isA<int>());
+    });
+
+    test('PedidoCreateRequest.toJson sends string for UUID clienteId', () {
+      const request = PedidoCreateRequest(
+        clienteId: 'uuid-cliente-xyz',
+        cantidadBalones: 1,
+        pagado: true,
+      );
+      expect(request.toJson()['cliente_id'], 'uuid-cliente-xyz');
+      expect(request.toJson()['cliente_id'], isA<String>());
+    });
+  });
+
   group('Cliente', () {
     test('parses optional direccion when present', () {
       final cliente = Cliente.fromJson({
@@ -23,7 +101,7 @@ void main() {
         'direccion': 'Mandarinas 257',
       });
 
-      expect(cliente.id, 4);
+      expect(cliente.id, '4');
       expect(cliente.alias, 'Mandarinas 257');
       expect(cliente.telefono, '923777321');
       expect(cliente.direccion, 'Mandarinas 257');
@@ -61,7 +139,7 @@ void main() {
         'ultimo_total_centavos': 5500,
       });
 
-      expect(cliente.id, 1);
+      expect(cliente.id, '1');
       expect(cliente.direccion, 'Las Higueras 371');
       expect(cliente.ultimoPedidoFecha, DateTime.parse('2026-01-16'));
       expect(cliente.ultimoTotalCentavos, 5500);
@@ -88,8 +166,8 @@ void main() {
         'monto_pendiente_centavos': 0,
       });
 
-      expect(pedido.id, 3);
-      expect(pedido.clienteId, 2);
+      expect(pedido.id, '3');
+      expect(pedido.clienteId, '2');
       expect(pedido.cantidadBalones, 1);
       expect(pedido.totalSoles, 55.00);
       expect(pedido.pagado, isTrue);
@@ -120,7 +198,7 @@ void main() {
 
     test('create request uses backend field names', () {
       const request = PedidoCreateRequest(
-        clienteId: 2,
+        clienteId: '2',
         cantidadBalones: 1,
         pagado: true,
         marcaBalon: 'PETROPERU',
@@ -260,7 +338,7 @@ void main() {
         'created_at': '2026-01-16T10:45:03.084894-05:00',
       });
 
-      expect(pedido.id, 1);
+      expect(pedido.id, '1');
       expect(pedido.clienteAlias, 'Las Higueras 371');
       expect(pedido.cantidadBalones, 2);
       expect(pedido.marcaBalon, 'PETROPERU');

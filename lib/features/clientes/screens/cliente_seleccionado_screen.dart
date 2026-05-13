@@ -5,6 +5,7 @@ import '../../../features/pedidos/screens/historial_cliente_screen.dart';
 import '../../../features/pedidos/screens/registrar_pedido_screen.dart';
 import '../../../features/stock/services/stock_service.dart';
 import '../../../shared/action_button.dart';
+import '../../../shared/info_field.dart';
 import '../models/cliente.dart';
 
 class ClienteSeleccionadoScreen extends StatelessWidget {
@@ -40,9 +41,9 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              _InfoRow(label: 'Direccion', value: direccion),
+              InfoField(label: 'Direccion', value: direccion),
               const SizedBox(height: 12),
-              _InfoRow(label: 'Telefono', value: cliente.telefono),
+              InfoField(label: 'Telefono', value: cliente.telefono),
               const Spacer(),
               ActionButton(
                 label: 'Registrar pedido',
@@ -96,32 +97,3 @@ class ClienteSeleccionadoScreen extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}

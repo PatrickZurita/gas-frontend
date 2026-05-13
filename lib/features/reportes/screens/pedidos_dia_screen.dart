@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/compact_list_item.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/metric_line.dart';
+import '../../../shared/status_badge.dart';
+import '../../../shared/summary_card.dart';
 import '../models/pedido_reporte.dart';
 import '../models/reporte_diario.dart';
 import '../money_format.dart';
@@ -51,7 +57,13 @@ class _PedidosDiaScreenState extends State<PedidosDiaScreen> {
           future: _reporteFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Padding(
+                padding: EdgeInsets.all(20),
+                child: LoadingCard(
+                  message: 'Cargando pedidos de hoy...',
+                  icon: Icons.receipt_long_outlined,
+                ),
+              );
             }
 
             if (snapshot.hasError) {
@@ -121,14 +133,9 @@ class _PedidosDiaContent extends StatelessWidget {
         _FiltroPedidos(selected: filtro, onChanged: onFiltroChanged),
         const SizedBox(height: 16),
         if (pedidos.isEmpty)
-          const _MessageBox(message: 'No hay pedidos con este filtro.')
+          const MessageBox(message: 'No hay pedidos con este filtro.')
         else
-          ...pedidos.map(
-            (pedido) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _PedidoDiaCard(pedido: pedido),
-            ),
-          ),
+          _PedidosDiaList(pedidos: pedidos),
       ],
     );
   }
@@ -148,9 +155,36 @@ class _PedidosDiaContent extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
+    const weekdays = [
+      'lunes',
+      'martes',
+      'miercoles',
+      'jueves',
+      'viernes',
+      'sabado',
+      'domingo',
+    ];
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    final weekday = weekdays[date.weekday - 1];
+    final month = months[date.month - 1];
+    return '${_capitalize(weekday)} ${date.day} de $month de ${date.year}';
+  }
+
+  String _capitalize(String value) {
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 }
 
@@ -161,64 +195,26 @@ class _TotalsFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
-      ),
+    return SummaryCard(
+      borderRadius: 8,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _TotalLine(
+          MetricLine(
             label: 'Total vendido',
             value: formatSolesFromCentavos(reporte.montoTotalCentavos),
             strong: true,
           ),
-          _TotalLine(
+          MetricLine(
             label: 'Pagado',
             value: formatSolesFromCentavos(reporte.montoPagadoCentavos),
           ),
-          _TotalLine(
+          MetricLine(
             label: 'Pendiente',
             value: formatSolesFromCentavos(reporte.montoPendienteCentavos),
           ),
-          _TotalLine(label: 'Pedidos', value: '${reporte.pedidosCount}'),
-          _TotalLine(label: 'Balones', value: '${reporte.balonesVendidos}'),
-        ],
-      ),
-    );
-  }
-}
-
-class _TotalLine extends StatelessWidget {
-  const _TotalLine({
-    required this.label,
-    required this.value,
-    this.strong = false,
-  });
-
-  final String label;
-  final String value;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 18))),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: strong ? 24 : 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          MetricLine(label: 'Pedidos', value: '${reporte.pedidosCount}'),
+          MetricLine(label: 'Balones', value: '${reporte.balonesVendidos}'),
         ],
       ),
     );
@@ -252,78 +248,74 @@ class _FiltroPedidos extends StatelessWidget {
       onSelectionChanged: (selection) => onChanged(selection.first),
       style: ButtonStyle(
         minimumSize: WidgetStateProperty.all(const Size.fromHeight(56)),
-        textStyle: WidgetStateProperty.all(const TextStyle(fontSize: 16)),
+        textStyle: WidgetStateProperty.all(
+          Theme.of(context).textTheme.titleMedium,
+        ),
       ),
     );
   }
 }
 
-class _PedidoDiaCard extends StatelessWidget {
-  const _PedidoDiaCard({required this.pedido});
+class _PedidosDiaList extends StatelessWidget {
+  const _PedidosDiaList({required this.pedidos});
+
+  final List<PedidoReporte> pedidos;
+
+  @override
+  Widget build(BuildContext context) {
+    return SummaryCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 8,
+      child: Column(
+        children: [
+          for (var index = 0; index < pedidos.length; index++)
+            _PedidoDiaRow(
+              pedido: pedidos[index],
+              showDivider: index < pedidos.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PedidoDiaRow extends StatelessWidget {
+  const _PedidoDiaRow({required this.pedido, required this.showDivider});
 
   final PedidoReporte pedido;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            pedido.clienteAlias,
-            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          _InfoLine(label: 'Balones', value: '${pedido.cantidadBalones}'),
-          _InfoLine(label: 'Marca', value: _displayCode(pedido.marcaBalon)),
-          _InfoLine(label: 'Tipo', value: _displayCode(pedido.tipoBalon)),
-          _InfoLine(
-            label: 'Monto',
-            value: formatSolesFromCentavos(pedido.montoTotalCentavos),
-          ),
-          _InfoLine(
-            label: 'Estado',
-            value: pedido.pagado ? 'Pagado' : 'Pendiente',
-          ),
-        ],
-      ),
+    return CompactListItem(
+      title: pedido.clienteAlias,
+      trailing: formatSolesFromCentavos(pedido.montoTotalCentavos),
+      showDivider: showDivider,
+      details: [
+        Text(
+          _balonesText(pedido.cantidadBalones),
+          style: const TextStyle(fontSize: 17),
+        ),
+        Text(
+          '${_displayCode(pedido.marcaBalon)} / ${_displayCode(pedido.tipoBalon)}',
+          style: TextStyle(fontSize: 16, color: colors.onSurfaceVariant),
+        ),
+        StatusBadge(
+          label: pedido.pagado ? 'Pagado' : 'Debe',
+          type: pedido.pagado ? StatusBadgeType.paid : StatusBadgeType.debt,
+        ),
+      ],
     );
+  }
+
+  String _balonesText(int cantidad) {
+    return cantidad == 1 ? '1 balon' : '$cantidad balones';
   }
 
   String _displayCode(String value) {
     final lower = value.toLowerCase();
     return '${lower[0].toUpperCase()}${lower.substring(1)}';
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 17))),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -345,7 +337,7 @@ class _ErrorState extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          _MessageBox(message: message),
+          MessageBox(message: message),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onRetry,
@@ -358,25 +350,6 @@ class _ErrorState extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _MessageBox extends StatelessWidget {
-  const _MessageBox({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(message, style: const TextStyle(fontSize: 18)),
     );
   }
 }

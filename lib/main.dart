@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/theme/app_theme.dart';
 import 'core/network/api_client.dart';
 import 'features/clientes/cliente_service.dart';
 import 'features/pedidos/pedido_service.dart';
@@ -25,13 +26,7 @@ class GasApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pedidos de Gas',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1F7A4D),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: HomeScreen(
         clienteService: clienteService,
         pedidoService: pedidoService,

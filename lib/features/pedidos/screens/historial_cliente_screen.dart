@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../shared/cliente_info_card.dart';
+import '../../../shared/compact_list_item.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/status_badge.dart';
+import '../../../shared/summary_card.dart';
 import '../../clientes/models/cliente.dart';
 import '../models/pedido.dart';
 import '../pedido_service.dart';
@@ -48,7 +54,7 @@ class _HistorialClienteScreenState extends State<HistorialClienteScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              _ClienteHeader(
+              ClienteInfoCard(
                 direccion: direccion,
                 telefono: widget.cliente.telefono,
               ),
@@ -56,36 +62,24 @@ class _HistorialClienteScreenState extends State<HistorialClienteScreen> {
             ];
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              children.addAll(const [
-                SizedBox(height: 32),
-                Center(child: CircularProgressIndicator()),
-                SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    'Cargando pedidos...',
-                    style: TextStyle(fontSize: 18),
-                  ),
+              children.add(
+                const LoadingCard(
+                  message: 'Cargando pedidos...',
+                  icon: Icons.receipt_long_outlined,
                 ),
-              ]);
+              );
             } else if (snapshot.hasError) {
-              children.add(_MessageBox(message: _errorMessage(snapshot.error)));
+              children.add(MessageBox(message: _errorMessage(snapshot.error)));
             } else {
               final pedidos = snapshot.data ?? const <Pedido>[];
               if (pedidos.isEmpty) {
                 children.add(
-                  const _MessageBox(
+                  const MessageBox(
                     message: 'Este cliente aun no tiene pedidos.',
                   ),
                 );
               } else {
-                children.addAll(
-                  pedidos.map(
-                    (pedido) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _PedidoCard(pedido: pedido),
-                    ),
-                  ),
-                );
+                children.add(_PedidoHistoryList(pedidos: pedidos));
               }
             }
 
@@ -107,122 +101,68 @@ class _HistorialClienteScreenState extends State<HistorialClienteScreen> {
   }
 }
 
-class _ClienteHeader extends StatelessWidget {
-  const _ClienteHeader({required this.direccion, required this.telefono});
+class _PedidoHistoryList extends StatelessWidget {
+  const _PedidoHistoryList({required this.pedidos});
 
-  final String direccion;
-  final String telefono;
+  final List<Pedido> pedidos;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
+    return SummaryCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 8,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cliente', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(
-            direccion,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(telefono, style: const TextStyle(fontSize: 18)),
+          for (var index = 0; index < pedidos.length; index++)
+            _PedidoHistoryRow(
+              pedido: pedidos[index],
+              showDivider: index < pedidos.length - 1,
+            ),
         ],
       ),
     );
   }
 }
 
-class _PedidoCard extends StatelessWidget {
-  const _PedidoCard({required this.pedido});
+class _PedidoHistoryRow extends StatelessWidget {
+  const _PedidoHistoryRow({required this.pedido, required this.showDivider});
 
   final Pedido pedido;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return CompactListItem(
+      title: _formatDate(pedido.fechaEntrega),
+      trailing: 'S/ ${pedido.totalSoles.toStringAsFixed(2)}',
+      showDivider: showDivider,
+      maxTitleLines: 1,
+      details: [
+        Text(
+          _balonesText(pedido.cantidadBalones),
+          style: const TextStyle(fontSize: 17),
+        ),
+        StatusBadge(
+          label: pedido.pagado ? 'Pagado' : 'Debe',
+          type: pedido.pagado ? StatusBadgeType.paid : StatusBadgeType.debt,
+        ),
+        if (!pedido.pagado)
           Text(
-            _formatDate(pedido.fechaEntrega),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            'Saldo S/ ${pedido.saldoPendiente.toStringAsFixed(2)}',
+            style: TextStyle(fontSize: 17, color: colors.onSurfaceVariant),
           ),
-          const SizedBox(height: 12),
-          _InfoLine(label: 'Balones', value: '${pedido.cantidadBalones}'),
-          _InfoLine(
-            label: 'Total',
-            value: 'S/ ${pedido.totalSoles.toStringAsFixed(2)}',
-          ),
-          _InfoLine(label: 'Pagado', value: pedido.pagado ? 'Si' : 'No'),
-          _InfoLine(
-            label: 'Saldo',
-            value: 'S/ ${pedido.saldoPendiente.toStringAsFixed(2)}',
-          ),
-        ],
-      ),
+      ],
     );
+  }
+
+  String _balonesText(int cantidad) {
+    return cantidad == 1 ? '1 balon' : '$cantidad balones';
   }
 
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day/$month/${date.year}';
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 18))),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MessageBox extends StatelessWidget {
-  const _MessageBox({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(message, style: const TextStyle(fontSize: 18)),
-    );
   }
 }

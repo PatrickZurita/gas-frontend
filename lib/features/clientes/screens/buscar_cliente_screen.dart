@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/action_button.dart';
+import '../../../shared/cliente_list_tile.dart';
+import '../../../shared/loading_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/section_title.dart';
+import '../../../shared/summary_card.dart';
 import '../../pedidos/pedido_service.dart';
 import '../../stock/services/stock_service.dart';
 import '../cliente_service.dart';
@@ -181,12 +186,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text(
-              'Busca por direccion o telefono',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
+            const SectionTitle(title: 'Busca por direccion o telefono'),
             const SizedBox(height: 16),
             TextField(
               controller: _queryController,
@@ -218,7 +218,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            if (_errorMessage != null) _MessageBox(message: _errorMessage!),
+            if (_errorMessage != null) MessageBox(message: _errorMessage!),
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
@@ -241,7 +241,7 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
   List<Widget> _buildResults() {
     if (_clientes.isEmpty && _searched && _errorMessage == null) {
       return const [
-        _MessageBox(message: 'No se encontraron clientes.'),
+        MessageBox(message: 'No se encontraron clientes.'),
         SizedBox(height: 8),
       ];
     }
@@ -250,8 +250,9 @@ class _BuscarClienteScreenState extends State<BuscarClienteScreen> {
         .map(
           (cliente) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _ClienteListItem(
-              cliente: cliente,
+            child: ClienteListTile(
+              direccion: cliente.direccion ?? cliente.alias,
+              telefono: cliente.telefono,
               onTap: () => _openClienteSeleccionado(cliente),
             ),
           ),
@@ -272,43 +273,38 @@ class _ClientesRecientesSection extends StatelessWidget {
       future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _RecentFrame(
-            child: Column(
-              children: [
-                SizedBox(height: 8),
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text(
-                  'Cargando clientes recientes...',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ],
-            ),
+          return const LoadingCard(
+            message: 'Cargando clientes recientes...',
+            icon: Icons.history,
           );
         }
 
         if (snapshot.hasError) {
-          return const _RecentFrame(
-            child: _MessageBox(
-              message: 'No se pudo cargar clientes recientes.',
-            ),
+          return const SummaryCard(
+            padding: EdgeInsets.all(14),
+            borderRadius: 12,
+            child: MessageBox(message: 'No se pudo cargar clientes recientes.'),
           );
         }
 
         final recientes = snapshot.data ?? const <ClienteReciente>[];
-        return _RecentFrame(
+        return SummaryCard(
+          padding: const EdgeInsets.all(14),
+          borderRadius: 12,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Clientes recientes',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               if (recientes.isEmpty)
-                const Text(
+                Text(
                   'Aun no hay clientes recientes.',
-                  style: TextStyle(fontSize: 18),
+                  style: Theme.of(context).textTheme.titleMedium,
                 )
               else
                 ...recientes
@@ -316,8 +312,10 @@ class _ClientesRecientesSection extends StatelessWidget {
                     .map(
                       (cliente) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: _ClienteRecienteItem(
-                          cliente: cliente,
+                        child: ClienteListTile(
+                          direccion: cliente.direccion,
+                          telefono: cliente.telefono,
+                          recent: true,
                           onTap: () => onTap(cliente),
                         ),
                       ),
@@ -330,98 +328,3 @@ class _ClientesRecientesSection extends StatelessWidget {
   }
 }
 
-class _RecentFrame extends StatelessWidget {
-  const _RecentFrame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _ClienteRecienteItem extends StatelessWidget {
-  const _ClienteRecienteItem({required this.cliente, required this.onTap});
-
-  final ClienteReciente cliente;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(10),
-      child: ListTile(
-        minVerticalPadding: 14,
-        leading: const Icon(Icons.history, size: 30),
-        title: Text(
-          cliente.direccion,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(cliente.telefono, style: const TextStyle(fontSize: 17)),
-        trailing: const Icon(Icons.chevron_right, size: 30),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
-class _ClienteListItem extends StatelessWidget {
-  const _ClienteListItem({required this.cliente, required this.onTap});
-
-  final Cliente cliente;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final direccion = cliente.direccion ?? cliente.alias;
-
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: ListTile(
-        minVerticalPadding: 18,
-        leading: const Icon(Icons.person, size: 32),
-        title: Text(
-          direccion,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(cliente.telefono, style: const TextStyle(fontSize: 18)),
-        trailing: const Icon(Icons.chevron_right, size: 32),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
-class _MessageBox extends StatelessWidget {
-  const _MessageBox({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(message, style: const TextStyle(fontSize: 18)),
-    );
-  }
-}

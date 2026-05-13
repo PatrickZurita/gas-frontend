@@ -1,3 +1,5 @@
+import '../../../core/network/json_helpers.dart';
+
 class PedidoCreateRequest {
   const PedidoCreateRequest({
     required this.clienteId,
@@ -11,7 +13,7 @@ class PedidoCreateRequest {
     this.montoPendienteCentavos,
   });
 
-  final int clienteId;
+  final String clienteId;
   final int cantidadBalones;
   final bool pagado;
   final double? totalSoles;
@@ -23,7 +25,7 @@ class PedidoCreateRequest {
 
   Map<String, Object?> toJson() {
     return {
-      'cliente_id': clienteId,
+      'cliente_id': encodeIdForBackend(clienteId),
       'cantidad_balones': cantidadBalones,
       'pagado': pagado,
       'marca_balon': marcaBalon,

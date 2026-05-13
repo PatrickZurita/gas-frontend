@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/action_button.dart';
+import '../../../shared/catalog_selector.dart';
+import '../../../shared/cliente_info_card.dart';
+import '../../../shared/message_box.dart';
+import '../../../shared/number_input_control.dart';
 import '../../clientes/models/cliente.dart';
 import '../../stock/models/catalogo_item.dart';
 import '../../stock/services/stock_service.dart';
@@ -183,13 +187,15 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
-            _ClienteBox(
+            ClienteInfoCard(
               direccion: direccion,
               telefono: widget.cliente.telefono,
             ),
             const SizedBox(height: 20),
-            _CantidadBalonesControl(
+            NumberInputControl(
               controller: _cantidadController,
+              label: 'Balones',
+              icon: Icons.propane_tank_outlined,
               enabled: !_isSaving,
             ),
             const SizedBox(height: 16),
@@ -211,36 +217,38 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               enabled: !_isSaving,
             ),
             const SizedBox(height: 16),
-            _CatalogSegmented(
+            CatalogSelector(
               label: 'Marca',
               value: _marcaBalon,
-              items: _marcas,
+              options:
+                  _marcas
+                      .map(
+                        (m) => CatalogOption(value: m.codigo, label: m.nombre),
+                      )
+                      .toList(),
               onChanged:
                   _isSaving
                       ? null
-                      : (value) {
-                        if (value != null) {
-                          setState(() {
-                            _marcaBalon = value;
-                          });
-                        }
-                      },
+                      : (value) => setState(() {
+                        _marcaBalon = value;
+                      }),
             ),
             const SizedBox(height: 16),
-            _CatalogSegmented(
+            CatalogSelector(
               label: 'Tipo',
               value: _tipoBalon,
-              items: _tipos,
+              options:
+                  _tipos
+                      .map(
+                        (t) => CatalogOption(value: t.codigo, label: t.nombre),
+                      )
+                      .toList(),
               onChanged:
                   _isSaving
                       ? null
-                      : (value) {
-                        if (value != null) {
-                          setState(() {
-                            _tipoBalon = value;
-                          });
-                        }
-                      },
+                      : (value) => setState(() {
+                        _tipoBalon = value;
+                      }),
             ),
             const SizedBox(height: 20),
             Text(
@@ -281,7 +289,10 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
             ),
             const SizedBox(height: 16),
             if (_message != null)
-              _OrderMessage(message: _message!, success: _saved),
+              MessageBox(
+                message: _message!,
+                type: _saved ? MessageBoxType.success : MessageBoxType.error,
+              ),
             if (_message != null) const SizedBox(height: 16),
             ActionButton(
               label: _isSaving ? 'Guardando...' : 'Guardar pedido',
@@ -327,229 +338,3 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   }
 }
 
-class _CatalogSegmented extends StatelessWidget {
-  const _CatalogSegmented({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String value;
-  final List<CatalogoItem> items;
-  final ValueChanged<String?>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<String>(
-            segments:
-                items
-                    .map(
-                      (item) => ButtonSegment<String>(
-                        value: item.codigo,
-                        label: Text(item.nombre),
-                      ),
-                    )
-                    .toList(),
-            selected: {value},
-            onSelectionChanged:
-                onChanged == null
-                    ? null
-                    : (selection) => onChanged!(selection.first),
-            style: ButtonStyle(
-              minimumSize: WidgetStateProperty.all(const Size.fromHeight(54)),
-              textStyle: WidgetStateProperty.all(const TextStyle(fontSize: 18)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CantidadBalonesControl extends StatefulWidget {
-  const _CantidadBalonesControl({
-    required this.controller,
-    required this.enabled,
-  });
-
-  final TextEditingController controller;
-  final bool enabled;
-
-  @override
-  State<_CantidadBalonesControl> createState() =>
-      _CantidadBalonesControlState();
-}
-
-class _CantidadBalonesControlState extends State<_CantidadBalonesControl> {
-  int get _cantidad => int.tryParse(widget.controller.text.trim()) ?? 1;
-
-  @override
-  Widget build(BuildContext context) {
-    final cantidad = _cantidad.clamp(1, 999);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.propane_tank_outlined, size: 28),
-              SizedBox(width: 8),
-              Text(
-                'Balones',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _QuantityButton(
-                icon: Icons.remove,
-                onPressed:
-                    widget.enabled && cantidad > 1
-                        ? () => _setCantidad(cantidad - 1)
-                        : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: TextField(
-                    controller: widget.controller,
-                    enabled: widget.enabled,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              _QuantityButton(
-                icon: Icons.add,
-                onPressed:
-                    widget.enabled ? () => _setCantidad(cantidad + 1) : null,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _setCantidad(int value) {
-    widget.controller.text = value.clamp(1, 999).toString();
-    setState(() {});
-  }
-}
-
-class _QuantityButton extends StatelessWidget {
-  const _QuantityButton({required this.icon, required this.onPressed});
-
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      height: 64,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Icon(icon, size: 34),
-      ),
-    );
-  }
-}
-
-class _ClienteBox extends StatelessWidget {
-  const _ClienteBox({required this.direccion, required this.telefono});
-
-  final String direccion;
-  final String telefono;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Cliente', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(
-            direccion,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(telefono, style: const TextStyle(fontSize: 18)),
-        ],
-      ),
-    );
-  }
-}
-
-class _OrderMessage extends StatelessWidget {
-  const _OrderMessage({required this.message, required this.success});
-
-  final String message;
-  final bool success;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: success ? colors.primaryContainer : colors.errorContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(message, style: const TextStyle(fontSize: 18)),
-    );
-  }
-}
