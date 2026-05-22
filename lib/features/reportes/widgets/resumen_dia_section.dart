@@ -16,10 +16,10 @@ class ResumenDiaSection extends StatefulWidget {
   final ReportesService reportesService;
 
   @override
-  State<ResumenDiaSection> createState() => _ResumenDiaSectionState();
+  State<ResumenDiaSection> createState() => ResumenDiaSectionState();
 }
 
-class _ResumenDiaSectionState extends State<ResumenDiaSection> {
+class ResumenDiaSectionState extends State<ResumenDiaSection> {
   late Future<ReporteDiario> _resumenFuture;
 
   @override
@@ -34,6 +34,19 @@ class _ResumenDiaSectionState extends State<ResumenDiaSection> {
 
   void _retry() {
     setState(_loadResumen);
+  }
+
+  Future<void> refresh() async {
+    late final Future<ReporteDiario> nextFuture;
+    setState(() {
+      nextFuture = widget.reportesService.obtenerResumenHoy();
+      _resumenFuture = nextFuture;
+    });
+    try {
+      await nextFuture;
+    } catch (_) {
+      // FutureBuilder renders the latest error state.
+    }
   }
 
   @override

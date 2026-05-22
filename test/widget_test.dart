@@ -109,6 +109,18 @@ void main() {
     expect(find.text('Agregar entrada'), findsOneWidget);
   });
 
+  testWidgets('home shows manual stock adjustment with clear label', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, stockService: _FakeStockService.withAdjustment());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Balones disponibles'), 300);
+
+    expect(find.text('Ajuste manual'), findsOneWidget);
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.text('Ajustes'), findsNothing);
+  });
+
   testWidgets('home shows stock error state', (WidgetTester tester) async {
     await _pumpHome(tester, stockService: _FakeStockService.failure());
     await tester.pumpAndSettle();
@@ -147,6 +159,61 @@ void main() {
     expect(find.text('Pagados'), findsOneWidget);
     expect(find.text('Pendientes'), findsOneWidget);
     expect(find.text('Las Higueras 371'), findsOneWidget);
+  });
+
+  testWidgets('home refreshes backend data after returning from pedidos', (
+    WidgetTester tester,
+  ) async {
+    final reportesService = _FakeReportesService.withData();
+    final stockService = _FakeStockService.withData();
+
+    await _pumpHome(
+      tester,
+      reportesService: reportesService,
+      stockService: stockService,
+    );
+    await tester.pumpAndSettle();
+
+    expect(reportesService.summaryCalls, 1);
+    expect(reportesService.deudasCalls, 1);
+    expect(stockService.summaryCalls, 1);
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(reportesService.summaryCalls, 3);
+    expect(reportesService.deudasCalls, 2);
+    expect(stockService.summaryCalls, 2);
+  });
+
+  testWidgets('pull to refresh reloads home sections from backend', (
+    WidgetTester tester,
+  ) async {
+    final reportesService = _FakeReportesService.withData();
+    final stockService = _FakeStockService.withData();
+
+    await _pumpHome(
+      tester,
+      reportesService: reportesService,
+      stockService: stockService,
+    );
+    await tester.pumpAndSettle();
+
+    expect(reportesService.summaryCalls, 1);
+    expect(reportesService.deudasCalls, 1);
+    expect(stockService.summaryCalls, 1);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 300));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(reportesService.summaryCalls, 2);
+    expect(reportesService.deudasCalls, 2);
+    expect(stockService.summaryCalls, 2);
   });
 
   testWidgets('day orders filters paid and pending orders', (
@@ -684,15 +751,31 @@ class _FakeStockService implements StockService {
       ),
       _error = null;
 
+  _FakeStockService.withAdjustment()
+    : _stock = StockResumen(
+        fecha: DateTime.parse('2026-01-16'),
+        stockIniciado: true,
+        stockInicial: 40,
+        entradas: 0,
+        salidas: 16,
+        ajustes: 1,
+        stockActual: 25,
+        stockFinalFisico: null,
+        cerrado: false,
+      ),
+      _error = null;
+
   _FakeStockService.failure()
     : _stock = null,
       _error = const ApiException(message: 'No se pudo cargar el stock.');
 
   final StockResumen? _stock;
   final ApiException? _error;
+  int summaryCalls = 0;
 
   @override
   Future<StockResumen> obtenerResumenHoy() async {
+    summaryCalls++;
     final error = _error;
     if (error != null) {
       throw error;
@@ -912,9 +995,12 @@ class _FakeReportesService implements ReportesService {
   final DeudasResumen? _deudas;
   final ApiException? _resumenError;
   final ApiException? _deudasError;
+  int summaryCalls = 0;
+  int deudasCalls = 0;
 
   @override
   Future<ReporteDiario> obtenerResumenHoy() async {
+    summaryCalls++;
     final error = _resumenError;
     if (error != null) {
       throw error;
@@ -929,6 +1015,7 @@ class _FakeReportesService implements ReportesService {
 
   @override
   Future<DeudasResumen> obtenerDeudas() async {
+    deudasCalls++;
     final error = _deudasError;
     if (error != null) {
       throw error;

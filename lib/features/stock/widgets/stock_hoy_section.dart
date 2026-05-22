@@ -16,10 +16,10 @@ class StockHoySection extends StatefulWidget {
   final StockService stockService;
 
   @override
-  State<StockHoySection> createState() => _StockHoySectionState();
+  State<StockHoySection> createState() => StockHoySectionState();
 }
 
-class _StockHoySectionState extends State<StockHoySection> {
+class StockHoySectionState extends State<StockHoySection> {
   late Future<StockResumen> _stockFuture;
 
   @override
@@ -34,6 +34,19 @@ class _StockHoySectionState extends State<StockHoySection> {
 
   void _retry() {
     setState(_loadStock);
+  }
+
+  Future<void> refresh() async {
+    late final Future<StockResumen> nextFuture;
+    setState(() {
+      nextFuture = widget.stockService.obtenerResumenHoy();
+      _stockFuture = nextFuture;
+    });
+    try {
+      await nextFuture;
+    } catch (_) {
+      // FutureBuilder renders the latest error state.
+    }
   }
 
   Future<void> _iniciarDia() async {
@@ -298,8 +311,11 @@ class _StockContent extends StatelessWidget {
               DataChip(label: 'Inicio', value: '${stock.stockInicial ?? 0}'),
               if (stock.entradas > 0)
                 DataChip(label: 'Entradas', value: '${stock.entradas}'),
-              if (stock.ajustes > 0)
-                DataChip(label: 'Ajustes', value: '${stock.ajustes}'),
+              if (stock.ajustes != 0)
+                DataChip(
+                  label: 'Ajuste manual',
+                  value: _formatAjustes(stock.ajustes),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -331,6 +347,13 @@ class _StockContent extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatAjustes(int ajustes) {
+    if (ajustes > 0) {
+      return '+$ajustes';
+    }
+    return '$ajustes';
   }
 }
 

@@ -15,10 +15,10 @@ class DeudasPendientesSection extends StatefulWidget {
 
   @override
   State<DeudasPendientesSection> createState() =>
-      _DeudasPendientesSectionState();
+      DeudasPendientesSectionState();
 }
 
-class _DeudasPendientesSectionState extends State<DeudasPendientesSection> {
+class DeudasPendientesSectionState extends State<DeudasPendientesSection> {
   late Future<DeudasResumen> _deudasFuture;
 
   @override
@@ -33,6 +33,19 @@ class _DeudasPendientesSectionState extends State<DeudasPendientesSection> {
 
   void _retry() {
     setState(_loadDeudas);
+  }
+
+  Future<void> refresh() async {
+    late final Future<DeudasResumen> nextFuture;
+    setState(() {
+      nextFuture = widget.reportesService.obtenerDeudas();
+      _deudasFuture = nextFuture;
+    });
+    try {
+      await nextFuture;
+    } catch (_) {
+      // FutureBuilder renders the latest error state.
+    }
   }
 
   @override

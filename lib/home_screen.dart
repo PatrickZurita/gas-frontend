@@ -30,14 +30,48 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _refreshVersion = 0;
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final GlobalKey<StockHoySectionState> _stockSectionKey =
+      GlobalKey<StockHoySectionState>();
+  final GlobalKey<ResumenDiaSectionState> _resumenSectionKey =
+      GlobalKey<ResumenDiaSectionState>();
+  final GlobalKey<DeudasPendientesSectionState> _deudasSectionKey =
+      GlobalKey<DeudasPendientesSectionState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _refreshHome();
+    }
+  }
 
   Future<void> _refreshHome() async {
-    setState(() {
-      _refreshVersion++;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    final tasks = <Future<void>>[
+      if (_stockSectionKey.currentState != null)
+        _stockSectionKey.currentState!.refresh(),
+      if (_resumenSectionKey.currentState != null)
+        _resumenSectionKey.currentState!.refresh(),
+      if (_deudasSectionKey.currentState != null)
+        _deudasSectionKey.currentState!.refresh(),
+    ];
+
+    if (tasks.isEmpty) {
+      return;
+    }
+
+    await Future.wait(tasks);
   }
 
   @override
@@ -88,17 +122,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 18),
               StockHoySection(
-                key: ValueKey('stock-$_refreshVersion'),
+                key: _stockSectionKey,
                 stockService: widget.stockService,
               ),
               const SizedBox(height: 16),
               ResumenDiaSection(
-                key: ValueKey('resumen-$_refreshVersion'),
+                key: _resumenSectionKey,
                 reportesService: widget.reportesService,
               ),
               const SizedBox(height: 16),
               DeudasPendientesSection(
-                key: ValueKey('deudas-$_refreshVersion'),
+                key: _deudasSectionKey,
                 reportesService: widget.reportesService,
               ),
             ],
@@ -108,8 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openBuscarCliente(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _openBuscarCliente(BuildContext context) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder:
             (_) => BuscarClienteScreen(
@@ -120,15 +154,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
       ),
     );
+    if (!mounted) {
+      return;
+    }
+    await _refreshHome();
   }
 
-  void _openPedidos(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _openPedidos(BuildContext context) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder:
             (_) => PedidosDiaScreen(reportesService: widget.reportesService),
       ),
     );
+    if (!mounted) {
+      return;
+    }
+    await _refreshHome();
   }
 }
 
