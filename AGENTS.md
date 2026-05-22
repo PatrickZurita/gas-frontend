@@ -1,9 +1,19 @@
 # AGENTS.md
 
+> Gobernanza del frontend Flutter. Hereda la raíz del workspace: [../AGENTS.md](../AGENTS.md). Guía Claude: [CLAUDE.md](CLAUDE.md).
+
 ## Proposito del producto
 - App movil Flutter para registrar pedidos de balones de gas.
 - Objetivo: reemplazar el cuaderno fisico.
 - Exito del MVP: que el negocio deje de depender del cuaderno.
+
+## Estado y plan (vigente 2026-05-22)
+- Backend activo: PostgreSQL (Fly+Neon). AWS/DynamoDB en standby; el frontend no debe asumir AWS.
+- Plan V2/V3/V4: [../docs/roadmap/V2_V3_FEATURE_ROADMAP.md](../docs/roadmap/V2_V3_FEATURE_ROADMAP.md), orden en [../docs/roadmap/IMPLEMENTATION_ORDER.md](../docs/roadmap/IMPLEMENTATION_ORDER.md).
+- **V2 frontend** (fase 7+): consumir contratos de `estado`/anulación/edición/peso 10/45; refrescar Home tras crear/editar/anular; **no calcular stock crítico localmente** (lo resuelve el backend). UX en [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md).
+- **V3**: historial por fecha (`GET /reportes/dia?fecha=`). **V4**: reportería semana/mes + tablet responsive ([../docs/roadmap/V4_REPORTING_TABLET_ROADMAP.md](../docs/roadmap/V4_REPORTING_TABLET_ROADMAP.md)).
+- Skills: `flutter-expert` (instalado en `.claude/skills/`) para Flutter/Dart genérico; [gas-flutter-tablet-ux](../docs/codex-skills/gas-flutter-tablet-ux/SKILL.md) y [gas-flutter-adult-first-ux](../docs/codex-skills/gas-flutter-adult-first-ux/SKILL.md) para reglas de dominio.
+- Reparto modelos: Codex GPT-5.5 implementa; Opus 4.7 audita UX adulto-first y tablet. [../docs/roadmap/MODEL_USAGE_STRATEGY.md](../docs/roadmap/MODEL_USAGE_STRATEGY.md).
 
 ## Principios de producto
 - Simplicidad extrema.
@@ -111,6 +121,24 @@
   - `tipo_balon = NORMAL`
 - Debe permitir precio con enteros o dos decimales en UI, pero convertir a centavos para contratos nuevos.
 - No debe implementar stock por marca/tipo, motor de precios, dashboard avanzado, auth compleja ni AWS.
+
+### J) Flutter Pedido V2 Agent (anulación / edición / peso)
+- Responsable futuro de consumir los contratos V2 de pedido sobre PostgreSQL.
+- Debe consumir solo:
+  - `POST /pedidos/{pedido_id}/anular`
+  - `PATCH /pedidos/{pedido_id}` (cantidad, precio, pagado, fecha y peso cuando exista)
+  - `peso_balon_kg` 10/45 en crear/editar pedido (default 10, compat legacy)
+  - `estado` del pedido para mostrar/ocultar anulados según contrato
+- Debe refrescar Home tras crear/editar/anular; anular requiere confirmación visible.
+- No debe corregir stock/resumen con cálculos locales; el backend es source of truth.
+
+### K) Flutter Tablet UX Agent (V4)
+- Responsable futuro del layout tablet responsive de reportería semanal/mensual.
+- Una sola app Flutter responsive; el móvil se mantiene simple y operativo.
+- Master-detail en tablet (lista de días + detalle), desglose 10/45 kg y deudas en un viewport.
+- No debe cambiar `ThemeData`, paleta ni estilos de cards; reutiliza `MetricCard`, `SummaryCard`, `DataChip`, `CompactListItem`, `StatusBadge`.
+- No graficos densos, no dashboard, no librerías PDF sin validar necesidad real.
+- Skill: [gas-flutter-tablet-ux](../docs/codex-skills/gas-flutter-tablet-ux/SKILL.md).
 
 ## Reglas de arquitectura Flutter
 - Usar estructura simple feature-first.
