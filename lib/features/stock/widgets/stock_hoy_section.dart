@@ -307,6 +307,16 @@ class _StockContent extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (stock.porPeso?.stockActual10kg != null)
+                DataChip(
+                  label: '10 kg',
+                  value: '${stock.porPeso!.stockActual10kg}',
+                ),
+              if (stock.porPeso?.stockActual45kg != null)
+                DataChip(
+                  label: '45 kg',
+                  value: '${stock.porPeso!.stockActual45kg}',
+                ),
               DataChip(label: 'Vendidos hoy', value: '${stock.salidas}'),
               DataChip(label: 'Inicio', value: '${stock.stockInicial ?? 0}'),
               if (stock.entradas > 0)

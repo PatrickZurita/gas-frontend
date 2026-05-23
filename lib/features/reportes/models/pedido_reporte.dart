@@ -1,4 +1,5 @@
 import '../../../core/network/json_helpers.dart';
+import '../../pedidos/models/pedido.dart';
 
 class PedidoReporte {
   const PedidoReporte({
@@ -14,6 +15,8 @@ class PedidoReporte {
     required this.pagado,
     required this.fechaEntrega,
     required this.createdAt,
+    this.pesoBalonKg = 10,
+    this.estado = PedidoEstado.activo,
   });
 
   final String id;
@@ -28,6 +31,33 @@ class PedidoReporte {
   final bool pagado;
   final DateTime fechaEntrega;
   final DateTime createdAt;
+  final int pesoBalonKg;
+  final PedidoEstado estado;
+
+  bool get esAnulado => estado == PedidoEstado.anulado;
+
+  Pedido toPedidoDetalle({String? direccionId}) {
+    final totalSoles = montoTotalCentavos / 100.0;
+    final saldoSoles = montoPendienteCentavos / 100.0;
+    return Pedido(
+      id: id,
+      clienteId: clienteId,
+      direccionId: direccionId ?? clienteId,
+      createdAt: createdAt,
+      fechaEntrega: fechaEntrega,
+      cantidadBalones: cantidadBalones,
+      totalSoles: totalSoles,
+      pagado: pagado,
+      saldoPendiente: saldoSoles,
+      marcaBalon: marcaBalon,
+      tipoBalon: tipoBalon,
+      precioUnitarioCentavos: precioUnitarioCentavos,
+      montoTotalCentavos: montoTotalCentavos,
+      montoPendienteCentavos: montoPendienteCentavos,
+      pesoBalonKg: pesoBalonKg,
+      estado: estado,
+    );
+  }
 
   factory PedidoReporte.fromJson(Map<String, Object?> json) {
     return PedidoReporte(
@@ -43,6 +73,8 @@ class PedidoReporte {
       pagado: json['pagado'] as bool,
       fechaEntrega: DateTime.parse(json['fecha_entrega'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
+      pesoBalonKg: json['peso_balon_kg'] as int? ?? 10,
+      estado: parsePedidoEstado(json['estado']),
     );
   }
 }

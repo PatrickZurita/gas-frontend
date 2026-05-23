@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'features/clientes/cliente_service.dart';
 import 'features/clientes/screens/buscar_cliente_screen.dart';
+import 'features/clientes/screens/clientes_screen.dart';
 import 'features/pedidos/pedido_service.dart';
 import 'features/reportes/screens/pedidos_dia_screen.dart';
+import 'features/reportes/screens/reportes_screen.dart';
 import 'features/reportes/services/reportes_service.dart';
 import 'features/reportes/widgets/deudas_pendientes_section.dart';
 import 'features/reportes/widgets/resumen_dia_section.dart';
@@ -105,9 +107,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   Expanded(
                     child: _CompactHomeButton(
-                      label: 'Buscar',
-                      icon: Icons.search,
-                      onPressed: () => _openBuscarCliente(context),
+                      label: 'Clientes',
+                      icon: Icons.people_alt_outlined,
+                      onPressed: () => _openClientes(context),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -120,6 +122,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              _CompactHomeButton(
+                label: 'Reportes',
+                icon: Icons.insights_outlined,
+                onPressed: () => _openReportes(context),
+              ),
               const SizedBox(height: 18),
               StockHoySection(
                 key: _stockSectionKey,
@@ -129,6 +137,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ResumenDiaSection(
                 key: _resumenSectionKey,
                 reportesService: widget.reportesService,
+                pedidoService: widget.pedidoService,
+                onCambioPedido: _refreshHome,
               ),
               const SizedBox(height: 16),
               DeudasPendientesSection(
@@ -160,11 +170,47 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _refreshHome();
   }
 
+  Future<void> _openClientes(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ClientesScreen(
+          clienteService: widget.clienteService,
+          pedidoService: widget.pedidoService,
+          stockService: widget.stockService,
+          onPedidoGuardado: _refreshHome,
+        ),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _refreshHome();
+  }
+
   Future<void> _openPedidos(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder:
-            (_) => PedidosDiaScreen(reportesService: widget.reportesService),
+        builder: (_) => PedidosDiaScreen(
+          reportesService: widget.reportesService,
+          pedidoService: widget.pedidoService,
+          onCambioPedido: _refreshHome,
+        ),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _refreshHome();
+  }
+
+  Future<void> _openReportes(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReportesScreen(
+          reportesService: widget.reportesService,
+          pedidoService: widget.pedidoService,
+          onCambioPedido: _refreshHome,
+        ),
       ),
     );
     if (!mounted) {

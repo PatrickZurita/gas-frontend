@@ -5,6 +5,7 @@ import 'package:gas_frontend/core/network/api_client.dart';
 import 'package:gas_frontend/features/clientes/cliente_service.dart';
 import 'package:gas_frontend/features/clientes/models/cliente_create_request.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_create_request.dart';
+import 'package:gas_frontend/features/pedidos/models/pedido_update_request.dart';
 import 'package:gas_frontend/features/pedidos/pedido_service.dart';
 import 'package:gas_frontend/features/reportes/services/reportes_service.dart';
 import 'package:gas_frontend/features/stock/models/stock_requests.dart';
@@ -71,6 +72,40 @@ void main() {
         ),
         throwsA(isA<ClienteDuplicadoException>()),
       );
+    });
+
+    test('lists clients from /clientes with query and pagination', () async {
+      late http.Request capturedRequest;
+      final service = ApiClienteService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode([
+                {
+                  'id': 1,
+                  'alias': 'Las Higueras 371',
+                  'telefono': '999888777',
+                  'direccion': 'Las Higueras 371',
+                },
+              ]),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final clientes =
+          await service.listarClientes(query: 'las', limit: 50, offset: 10);
+
+      expect(capturedRequest.method, 'GET');
+      expect(capturedRequest.url.path, '/clientes');
+      expect(capturedRequest.url.queryParameters['q'], 'las');
+      expect(capturedRequest.url.queryParameters['limit'], '50');
+      expect(capturedRequest.url.queryParameters['offset'], '10');
+      expect(clientes.single.alias, 'Las Higueras 371');
     });
 
     test('gets recent clients from /clientes/recientes', () async {
@@ -158,10 +193,130 @@ void main() {
       final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
       expect(body['marca_balon'], 'PETROPERU');
       expect(body['tipo_balon'], 'NORMAL');
+      expect(body['peso_balon_kg'], 10);
       expect(body['precio_unitario_centavos'], 5500);
       expect(body['monto_total_centavos'], 5500);
       expect(body['monto_pendiente_centavos'], 0);
       expect(pedido.totalSoles, 55.00);
+    });
+
+    test('anular pedido posts to /pedidos/{id}/anular with motivo', () async {
+      late http.Request capturedRequest;
+      final service = ApiPedidoService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(_pedidoAnuladoJson()),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final pedido = await service.anularPedido('10', motivo: 'Duplicado');
+
+      expect(capturedRequest.method, 'POST');
+      expect(capturedRequest.url.path, '/pedidos/10/anular');
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body['motivo'], 'Duplicado');
+      expect(pedido.esAnulado, isTrue);
+    });
+
+    test('anular pedido maps 409 to PedidoConflictoException', () {
+      final service = ApiPedidoService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            return http.Response(
+              jsonEncode({'detail': 'Este pedido ya esta anulado.'}),
+              409,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      expect(
+        () => service.anularPedido('10'),
+        throwsA(isA<PedidoConflictoException>()),
+      );
+    });
+
+    test('editar pedido patches /pedidos/{id} with new fields', () async {
+      late http.Request capturedRequest;
+      final service = ApiPedidoService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode({
+                'id': 10,
+                'cliente_id': 1,
+                'direccion_id': 1,
+                'created_at': '2026-01-16T10:00:00-05:00',
+                'fecha_entrega': '2026-01-16',
+                'cantidad_balones': 2,
+                'total_soles': '110.00',
+                'pagado': false,
+                'saldo_pendiente': '110.00',
+                'marca_balon': 'PETROPERU',
+                'tipo_balon': 'NORMAL',
+                'precio_unitario_centavos': 5500,
+                'monto_total_centavos': 11000,
+                'monto_pendiente_centavos': 11000,
+                'peso_balon_kg': 45,
+                'estado': 'ACTIVO',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final pedido = await service.editarPedido(
+        '10',
+        const PedidoUpdateRequest(
+          cantidadBalones: 2,
+          pesoBalonKg: 45,
+          motivoEdicion: 'Correccion del pedido',
+        ),
+      );
+
+      expect(capturedRequest.method, 'PATCH');
+      expect(capturedRequest.url.path, '/pedidos/10');
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body['cantidad_balones'], 2);
+      expect(body['peso_balon_kg'], 45);
+      expect(body['motivo_edicion'], 'Correccion del pedido');
+      expect(pedido.pesoBalonKg, 45);
+    });
+
+    test('editar pedido maps 409 to PedidoConflictoException', () {
+      final service = ApiPedidoService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            return http.Response(
+              jsonEncode({'detail': 'No se puede editar un pedido anulado.'}),
+              409,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      expect(
+        () => service.editarPedido(
+          '10',
+          const PedidoUpdateRequest(cantidadBalones: 2),
+        ),
+        throwsA(isA<PedidoConflictoException>()),
+      );
     });
 
     test('lists orders by cliente_id query parameter', () async {
@@ -253,6 +408,78 @@ void main() {
       expect(capturedRequest.method, 'GET');
       expect(capturedRequest.url.path, '/reportes/dia');
       expect(capturedRequest.url.queryParameters['fecha'], '2026-01-16');
+    });
+
+    test('gets weekly report from /reportes/semana', () async {
+      late http.Request capturedRequest;
+      final service = ApiReportesService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode({
+                'desde': '2026-05-18',
+                'hasta': '2026-05-24',
+                'pedidos_count': 12,
+                'balones_vendidos': 14,
+                'balones_vendidos_10kg': 12,
+                'balones_vendidos_45kg': 2,
+                'monto_total_centavos': 81000,
+                'monto_cobrado_centavos': 76000,
+                'monto_pendiente_centavos': 5000,
+                'dias': <Map<String, Object?>>[],
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final reporte =
+          await service.obtenerReporteSemana(DateTime(2026, 5, 18));
+
+      expect(capturedRequest.method, 'GET');
+      expect(capturedRequest.url.path, '/reportes/semana');
+      expect(capturedRequest.url.queryParameters['desde'], '2026-05-18');
+      expect(reporte.balonesVendidos10kg, 12);
+      expect(reporte.balonesVendidos45kg, 2);
+    });
+
+    test('gets monthly report from /reportes/mes', () async {
+      late http.Request capturedRequest;
+      final service = ApiReportesService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode({
+                'mes': '2026-05',
+                'pedidos_count': 50,
+                'balones_vendidos': 60,
+                'balones_vendidos_10kg': 55,
+                'balones_vendidos_45kg': 5,
+                'monto_total_centavos': 330000,
+                'monto_cobrado_centavos': 310000,
+                'monto_pendiente_centavos': 20000,
+                'dias': <Map<String, Object?>>[],
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final reporte = await service.obtenerReporteMes(DateTime(2026, 5));
+
+      expect(capturedRequest.method, 'GET');
+      expect(capturedRequest.url.path, '/reportes/mes');
+      expect(capturedRequest.url.queryParameters['mes'], '2026-05');
+      expect(reporte.mes, '2026-05');
+      expect(reporte.balonesVendidos45kg, 5);
     });
 
     test('gets debts summary from /reportes/deudas', () async {
@@ -502,5 +729,28 @@ Map<String, Object?> _stockOperacionJson(
     'cantidad_delta': cantidadDelta,
     'stock_actual': stockActual,
     'observacion': null,
+  };
+}
+
+Map<String, Object?> _pedidoAnuladoJson() {
+  return {
+    'id': 10,
+    'cliente_id': 1,
+    'direccion_id': 1,
+    'created_at': '2026-01-16T10:00:00-05:00',
+    'fecha_entrega': '2026-01-16',
+    'cantidad_balones': 1,
+    'total_soles': '55.00',
+    'pagado': true,
+    'saldo_pendiente': '0.00',
+    'marca_balon': 'PETROPERU',
+    'tipo_balon': 'NORMAL',
+    'precio_unitario_centavos': 5500,
+    'monto_total_centavos': 5500,
+    'monto_pendiente_centavos': 0,
+    'peso_balon_kg': 10,
+    'estado': 'ANULADO',
+    'anulado_at': '2026-01-16T11:00:00-05:00',
+    'anulado_motivo': 'Duplicado',
   };
 }

@@ -6,6 +6,7 @@ import '../../../shared/catalog_selector.dart';
 import '../../../shared/cliente_info_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/number_input_control.dart';
+import '../../../shared/peso_balon_selector.dart';
 import '../../clientes/models/cliente.dart';
 import '../../stock/models/catalogo_item.dart';
 import '../../stock/services/stock_service.dart';
@@ -42,6 +43,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   String? _message;
   String _marcaBalon = 'PETROPERU';
   String _tipoBalon = 'NORMAL';
+  int _pesoBalonKg = 10;
   List<CatalogoItem> _marcas = const [
     CatalogoItem(codigo: 'PETROPERU', nombre: 'Petroperu'),
     CatalogoItem(codigo: 'SOLGAS', nombre: 'Solgas'),
@@ -122,6 +124,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
           pagado: _pagado,
           marcaBalon: _marcaBalon,
           tipoBalon: _tipoBalon,
+          pesoBalonKg: _pesoBalonKg,
           precioUnitarioCentavos: precioCentavos,
           montoTotalCentavos: montoTotalCentavos,
           montoPendienteCentavos: _pagado ? 0 : montoTotalCentavos,
@@ -197,6 +200,14 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               label: 'Balones',
               icon: Icons.propane_tank_outlined,
               enabled: !_isSaving,
+            ),
+            const SizedBox(height: 16),
+            PesoBalonSelector(
+              value: _pesoBalonKg,
+              enabled: !_isSaving,
+              onChanged: (value) => setState(() {
+                _pesoBalonKg = value;
+              }),
             ),
             const SizedBox(height: 16),
             TextField(

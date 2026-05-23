@@ -7,6 +7,8 @@ import '../../../shared/message_box.dart';
 import '../../../shared/metric_line.dart';
 import '../../../shared/status_badge.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/pedido_service.dart';
+import '../../pedidos/screens/detalle_pedido_screen.dart';
 import '../models/pedido_reporte.dart';
 import '../models/reporte_diario.dart';
 import '../money_format.dart';
@@ -17,12 +19,16 @@ enum PedidoDiaFiltro { todos, pagados, pendientes }
 class PedidosDiaScreen extends StatefulWidget {
   const PedidosDiaScreen({
     required this.reportesService,
+    this.pedidoService,
     this.initialReporte,
+    this.onCambioPedido,
     super.key,
   });
 
   final ReportesService reportesService;
+  final PedidoService? pedidoService;
   final ReporteDiario? initialReporte;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   State<PedidosDiaScreen> createState() => _PedidosDiaScreenState();
@@ -42,10 +48,30 @@ class _PedidosDiaScreenState extends State<PedidosDiaScreen> {
             : Future<ReporteDiario>.value(initial);
   }
 
-  void _retry() {
+  Future<void> _retry() async {
     setState(() {
       _reporteFuture = widget.reportesService.obtenerResumenHoy();
     });
+  }
+
+  Future<void> _abrirDetalle(PedidoReporte pedido) async {
+    final pedidoService = widget.pedidoService;
+    if (pedidoService == null) return;
+
+    final cambio = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => DetallePedidoScreen(
+          pedido: pedido.toPedidoDetalle(),
+          pedidoService: pedidoService,
+          clienteAlias: pedido.clienteAlias,
+          onCambioPedido: widget.onCambioPedido,
+        ),
+      ),
+    );
+
+    if (cambio == true && mounted) {
+      await _retry();
+    }
   }
 
   @override
@@ -86,6 +112,8 @@ class _PedidosDiaScreenState extends State<PedidosDiaScreen> {
                   _filtro = value;
                 });
               },
+              onPedidoTap:
+                  widget.pedidoService == null ? null : _abrirDetalle,
             );
           },
         ),
@@ -106,11 +134,13 @@ class _PedidosDiaContent extends StatelessWidget {
     required this.reporte,
     required this.filtro,
     required this.onFiltroChanged,
+    this.onPedidoTap,
   });
 
   final ReporteDiario reporte;
   final PedidoDiaFiltro filtro;
   final ValueChanged<PedidoDiaFiltro> onFiltroChanged;
+  final void Function(PedidoReporte)? onPedidoTap;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +165,7 @@ class _PedidosDiaContent extends StatelessWidget {
         if (pedidos.isEmpty)
           const MessageBox(message: 'No hay pedidos con este filtro.')
         else
-          _PedidosDiaList(pedidos: pedidos),
+          _PedidosDiaList(pedidos: pedidos, onPedidoTap: onPedidoTap),
       ],
     );
   }
@@ -257,9 +287,10 @@ class _FiltroPedidos extends StatelessWidget {
 }
 
 class _PedidosDiaList extends StatelessWidget {
-  const _PedidosDiaList({required this.pedidos});
+  const _PedidosDiaList({required this.pedidos, this.onPedidoTap});
 
   final List<PedidoReporte> pedidos;
+  final void Function(PedidoReporte)? onPedidoTap;
 
   @override
   Widget build(BuildContext context) {
@@ -272,6 +303,9 @@ class _PedidosDiaList extends StatelessWidget {
             _PedidoDiaRow(
               pedido: pedidos[index],
               showDivider: index < pedidos.length - 1,
+              onTap: onPedidoTap == null
+                  ? null
+                  : () => onPedidoTap!(pedidos[index]),
             ),
         ],
       ),
@@ -280,33 +314,63 @@ class _PedidosDiaList extends StatelessWidget {
 }
 
 class _PedidoDiaRow extends StatelessWidget {
-  const _PedidoDiaRow({required this.pedido, required this.showDivider});
+  const _PedidoDiaRow({
+    required this.pedido,
+    required this.showDivider,
+    this.onTap,
+  });
 
   final PedidoReporte pedido;
   final bool showDivider;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return CompactListItem(
+    final row = CompactListItem(
       title: pedido.clienteAlias,
       trailing: formatSolesFromCentavos(pedido.montoTotalCentavos),
       showDivider: showDivider,
       details: [
         Text(
-          _balonesText(pedido.cantidadBalones),
+          '${_balonesText(pedido.cantidadBalones)} ${pedido.pesoBalonKg} kg',
           style: const TextStyle(fontSize: 17),
         ),
         Text(
           '${_displayCode(pedido.marcaBalon)} / ${_displayCode(pedido.tipoBalon)}',
           style: TextStyle(fontSize: 16, color: colors.onSurfaceVariant),
         ),
-        StatusBadge(
-          label: pedido.pagado ? 'Pagado' : 'Debe',
-          type: pedido.pagado ? StatusBadgeType.paid : StatusBadgeType.debt,
-        ),
+        if (pedido.esAnulado)
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: colors.outline, width: 0.8),
+            ),
+            child: Text(
+              'ANULADO',
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          )
+        else
+          StatusBadge(
+            label: pedido.pagado ? 'Pagado' : 'Debe',
+            type: pedido.pagado ? StatusBadgeType.paid : StatusBadgeType.debt,
+          ),
       ],
     );
+
+    if (onTap == null) {
+      return row;
+    }
+
+    return InkWell(onTap: onTap, child: row);
   }
 
   String _balonesText(int cantidad) {
@@ -314,6 +378,7 @@ class _PedidoDiaRow extends StatelessWidget {
   }
 
   String _displayCode(String value) {
+    if (value.isEmpty) return value;
     final lower = value.toLowerCase();
     return '${lower[0].toUpperCase()}${lower.substring(1)}';
   }
@@ -323,7 +388,7 @@ class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
-  final VoidCallback onRetry;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {

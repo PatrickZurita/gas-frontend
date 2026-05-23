@@ -1,4 +1,5 @@
 import 'movimiento_stock.dart';
+import 'stock_por_peso.dart';
 import 'stock_resumen.dart';
 
 class StockDia extends StockResumen {
@@ -13,6 +14,7 @@ class StockDia extends StockResumen {
     required super.stockFinalFisico,
     required super.cerrado,
     required this.movimientos,
+    super.porPeso,
   });
 
   final List<MovimientoStock> movimientos;
@@ -30,6 +32,9 @@ class StockDia extends StockResumen {
       stockActual: json['stock_actual'] as int?,
       stockFinalFisico: json['stock_final_fisico'] as int?,
       cerrado: json['cerrado'] as bool? ?? false,
+      porPeso: StockPorPeso.fromJson(
+        json['por_peso'] as Map<String, Object?>?,
+      ),
       movimientos:
           movimientosJson
               .map(

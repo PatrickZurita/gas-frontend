@@ -1,5 +1,18 @@
 import '../../../core/network/json_helpers.dart';
 
+enum PedidoEstado { activo, anulado }
+
+PedidoEstado parsePedidoEstado(Object? value) {
+  if (value is String && value.toUpperCase() == 'ANULADO') {
+    return PedidoEstado.anulado;
+  }
+  return PedidoEstado.activo;
+}
+
+String pedidoEstadoToString(PedidoEstado estado) {
+  return estado == PedidoEstado.anulado ? 'ANULADO' : 'ACTIVO';
+}
+
 class Pedido {
   const Pedido({
     required this.id,
@@ -16,6 +29,11 @@ class Pedido {
     required this.precioUnitarioCentavos,
     required this.montoTotalCentavos,
     required this.montoPendienteCentavos,
+    this.pesoBalonKg = 10,
+    this.estado = PedidoEstado.activo,
+    this.anuladoAt,
+    this.anuladoMotivo,
+    this.updatedAt,
   });
 
   final String id;
@@ -32,6 +50,13 @@ class Pedido {
   final int? precioUnitarioCentavos;
   final int? montoTotalCentavos;
   final int? montoPendienteCentavos;
+  final int pesoBalonKg;
+  final PedidoEstado estado;
+  final DateTime? anuladoAt;
+  final String? anuladoMotivo;
+  final DateTime? updatedAt;
+
+  bool get esAnulado => estado == PedidoEstado.anulado;
 
   factory Pedido.fromJson(Map<String, Object?> json) {
     return Pedido(
@@ -49,6 +74,11 @@ class Pedido {
       precioUnitarioCentavos: json['precio_unitario_centavos'] as int?,
       montoTotalCentavos: json['monto_total_centavos'] as int?,
       montoPendienteCentavos: json['monto_pendiente_centavos'] as int?,
+      pesoBalonKg: json['peso_balon_kg'] as int? ?? 10,
+      estado: parsePedidoEstado(json['estado']),
+      anuladoAt: _parseDateTime(json['anulado_at']),
+      anuladoMotivo: json['anulado_motivo'] as String?,
+      updatedAt: _parseDateTime(json['updated_at']),
     );
   }
 
@@ -60,5 +90,12 @@ class Pedido {
       return double.parse(value);
     }
     throw FormatException('Monto invalido: $value');
+  }
+
+  static DateTime? _parseDateTime(Object? value) {
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
+    return null;
   }
 }

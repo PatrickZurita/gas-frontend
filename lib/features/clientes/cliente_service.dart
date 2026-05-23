@@ -17,6 +17,12 @@ abstract interface class ClienteService {
   Future<Cliente> obtenerCliente(String id);
 
   Future<List<ClienteReciente>> obtenerClientesRecientes({int limit = 5});
+
+  Future<List<Cliente>> listarClientes({
+    String? query,
+    int limit = 100,
+    int offset = 0,
+  });
 }
 
 class ApiClienteService implements ClienteService {
@@ -73,5 +79,41 @@ class ApiClienteService implements ClienteService {
     return list
         .map((item) => ClienteReciente.fromJson(item as Map<String, Object?>))
         .toList();
+  }
+
+  @override
+  Future<List<Cliente>> listarClientes({
+    String? query,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+    };
+
+    final json = await _apiClient.getJson(
+      '/clientes',
+      queryParameters: params,
+    );
+
+    final list = _asList(json);
+    return list
+        .map((item) => Cliente.fromJson(item as Map<String, Object?>))
+        .toList();
+  }
+
+  List<Object?> _asList(Object? json) {
+    if (json is List<Object?>) {
+      return json;
+    }
+    if (json is Map<String, Object?>) {
+      final items = json['items'] ?? json['data'] ?? json['clientes'];
+      if (items is List<Object?>) {
+        return items;
+      }
+    }
+    throw const ApiException(message: 'Respuesta de clientes invalida.');
   }
 }

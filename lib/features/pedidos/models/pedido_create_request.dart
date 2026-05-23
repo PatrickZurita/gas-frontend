@@ -8,6 +8,7 @@ class PedidoCreateRequest {
     required this.pagado,
     this.marcaBalon = 'PETROPERU',
     this.tipoBalon = 'NORMAL',
+    this.pesoBalonKg = 10,
     this.precioUnitarioCentavos,
     this.montoTotalCentavos,
     this.montoPendienteCentavos,
@@ -19,6 +20,7 @@ class PedidoCreateRequest {
   final double? totalSoles;
   final String marcaBalon;
   final String tipoBalon;
+  final int pesoBalonKg;
   final int? precioUnitarioCentavos;
   final int? montoTotalCentavos;
   final int? montoPendienteCentavos;
@@ -30,6 +32,7 @@ class PedidoCreateRequest {
       'pagado': pagado,
       'marca_balon': marcaBalon,
       'tipo_balon': tipoBalon,
+      'peso_balon_kg': pesoBalonKg,
       if (precioUnitarioCentavos != null)
         'precio_unitario_centavos': precioUnitarioCentavos,
       if (montoTotalCentavos != null)

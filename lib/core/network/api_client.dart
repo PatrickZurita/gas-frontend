@@ -48,6 +48,17 @@ class ApiClient {
     return _decodeSuccess(response);
   }
 
+  Future<Object?> patchJson(String path, {Map<String, Object?>? body}) async {
+    final response = await _send(
+      () => _httpClient.patch(
+        _buildUri(path),
+        headers: jsonHeaders,
+        body: jsonEncode(body ?? const <String, Object?>{}),
+      ),
+    );
+    return _decodeSuccess(response);
+  }
+
   Uri _buildUri(String path, {Map<String, String>? queryParameters}) {
     final normalizedBasePath =
         _baseUri.path.endsWith('/')

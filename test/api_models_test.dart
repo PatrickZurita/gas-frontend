@@ -214,10 +214,79 @@ void main() {
         'pagado': true,
         'marca_balon': 'PETROPERU',
         'tipo_balon': 'NORMAL',
+        'peso_balon_kg': 10,
         'precio_unitario_centavos': 5500,
         'monto_total_centavos': 5500,
         'monto_pendiente_centavos': 0,
       });
+    });
+
+    test('create request defaults peso_balon_kg to 10', () {
+      const request = PedidoCreateRequest(
+        clienteId: '2',
+        cantidadBalones: 1,
+        pagado: true,
+      );
+
+      expect(request.toJson()['peso_balon_kg'], 10);
+    });
+
+    test('create request serializes peso_balon_kg 45 when provided', () {
+      const request = PedidoCreateRequest(
+        clienteId: '2',
+        cantidadBalones: 1,
+        pagado: true,
+        pesoBalonKg: 45,
+      );
+
+      expect(request.toJson()['peso_balon_kg'], 45);
+    });
+  });
+
+  group('Pedido V2 fields', () {
+    test('legacy payload defaults estado ACTIVO and peso 10', () {
+      final pedido = Pedido.fromJson({
+        'id': 1,
+        'cliente_id': 1,
+        'direccion_id': 1,
+        'created_at': '2026-01-16T10:45:03.084894-05:00',
+        'fecha_entrega': '2026-01-16',
+        'cantidad_balones': 1,
+        'total_soles': 55.0,
+        'pagado': true,
+        'saldo_pendiente': 0,
+        'monto_total_centavos': 5500,
+      });
+
+      expect(pedido.pesoBalonKg, 10);
+      expect(pedido.estado, PedidoEstado.activo);
+      expect(pedido.esAnulado, isFalse);
+      expect(pedido.anuladoAt, isNull);
+      expect(pedido.anuladoMotivo, isNull);
+    });
+
+    test('parses estado ANULADO and motivo', () {
+      final pedido = Pedido.fromJson({
+        'id': 1,
+        'cliente_id': 1,
+        'direccion_id': 1,
+        'created_at': '2026-01-16T10:45:03.084894-05:00',
+        'fecha_entrega': '2026-01-16',
+        'cantidad_balones': 1,
+        'total_soles': 55.0,
+        'pagado': true,
+        'saldo_pendiente': 0,
+        'estado': 'ANULADO',
+        'anulado_at': '2026-01-16T12:00:00-05:00',
+        'anulado_motivo': 'Duplicado',
+        'peso_balon_kg': 45,
+        'updated_at': '2026-01-16T12:00:00-05:00',
+      });
+
+      expect(pedido.esAnulado, isTrue);
+      expect(pedido.anuladoMotivo, 'Duplicado');
+      expect(pedido.pesoBalonKg, 45);
+      expect(pedido.updatedAt, isNotNull);
     });
   });
 

@@ -11,10 +11,13 @@ import 'package:gas_frontend/features/clientes/screens/crear_cliente_screen.dart
 import 'package:gas_frontend/features/clientes/screens/cliente_seleccionado_screen.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_create_request.dart';
+import 'package:gas_frontend/features/pedidos/models/pedido_update_request.dart';
 import 'package:gas_frontend/features/pedidos/pedido_service.dart';
 import 'package:gas_frontend/features/reportes/models/deudas_resumen.dart';
 import 'package:gas_frontend/features/reportes/models/pedido_reporte.dart';
 import 'package:gas_frontend/features/reportes/models/reporte_diario.dart';
+import 'package:gas_frontend/features/reportes/models/reporte_mensual.dart';
+import 'package:gas_frontend/features/reportes/models/reporte_semanal.dart';
 import 'package:gas_frontend/features/reportes/services/reportes_service.dart';
 import 'package:gas_frontend/features/stock/models/catalogo_item.dart';
 import 'package:gas_frontend/features/stock/models/stock_dia.dart';
@@ -29,27 +32,29 @@ void main() {
     await _pumpHome(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Resumen del dia'), findsOneWidget);
     expect(find.text('Registrar pedido'), findsOneWidget);
-    expect(find.text('Buscar'), findsOneWidget);
+    expect(find.text('Clientes'), findsOneWidget);
     expect(find.text('Pedidos'), findsWidgets);
+    expect(find.text('Reportes'), findsOneWidget);
     expect(find.text('Historial'), findsNothing);
     await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
     expect(find.text('Stock de hoy'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Resumen del dia'), 300);
+    expect(find.text('Resumen del dia'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Deudas'), 300);
     expect(find.text('Deudas'), findsOneWidget);
   });
 
-  testWidgets('home opens client search from Buscar cliente', (
+  testWidgets('home opens clients catalog from Clientes button', (
     WidgetTester tester,
   ) async {
     await _pumpHome(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Buscar'));
+    await tester.tap(find.text('Clientes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Busca por direccion o telefono'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Clientes'), findsOneWidget);
     expect(find.text('Crear nuevo cliente'), findsOneWidget);
   });
 
@@ -71,6 +76,7 @@ void main() {
   testWidgets('home shows empty reports summary', (WidgetTester tester) async {
     await _pumpHome(tester, reportesService: _FakeReportesService.empty());
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Resumen del dia'), 300);
 
     expect(find.text('Total vendido'), findsOneWidget);
     expect(find.text('S/ 0.00'), findsWidgets);
@@ -135,6 +141,7 @@ void main() {
   ) async {
     await _pumpHome(tester, reportesService: _FakeReportesService.withData());
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Resumen del dia'), 300);
 
     expect(find.text('S/ 165.00'), findsOneWidget);
     expect(find.text('S/ 110.00'), findsOneWidget);
@@ -150,6 +157,7 @@ void main() {
   ) async {
     await _pumpHome(tester, reportesService: _FakeReportesService.withData());
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Resumen del dia'), 300);
 
     await tester.tap(find.text('Resumen del dia'));
     await tester.pumpAndSettle();
@@ -250,6 +258,10 @@ void main() {
   testWidgets('home shows reports error state', (WidgetTester tester) async {
     await _pumpHome(tester, reportesService: _FakeReportesService.failure());
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('No se pudo cargar el resumen.'),
+      300,
+    );
 
     expect(find.text('No se pudo cargar el resumen.'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
@@ -432,7 +444,12 @@ void main() {
 
     expect(find.text('Nuevo pedido'), findsOneWidget);
     expect(find.widgetWithText(TextField, '1'), findsOneWidget);
-    expect(find.text('Petroperu'), findsOneWidget);
+    expect(find.text('Peso del balon'), findsOneWidget);
+    expect(find.text('10 kg'), findsAtLeastNWidgets(1));
+    expect(find.text('45 kg'), findsAtLeastNWidgets(1));
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
+    expect(find.text('Petroperu'), findsAtLeastNWidgets(1));
     expect(find.widgetWithText(TextField, 'Precio por balon'), findsOneWidget);
     expect(find.text('No escribas el total'), findsOneWidget);
 
@@ -660,6 +677,25 @@ class _FakeClienteService implements ClienteService {
   }) async {
     return _recientes.take(limit).toList();
   }
+
+  @override
+  Future<List<Cliente>> listarClientes({
+    String? query,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    if (query == null || query.isEmpty) {
+      return _clientes;
+    }
+    final q = query.toLowerCase();
+    return _clientes
+        .where(
+          (c) =>
+              (c.direccion ?? c.alias).toLowerCase().contains(q) ||
+              c.telefono.contains(q),
+        )
+        .toList();
+  }
 }
 
 class _FakePedidoService implements PedidoService {
@@ -719,6 +755,53 @@ class _FakePedidoService implements PedidoService {
   @override
   Future<List<Pedido>> listarPedidosPorCliente(String clienteId) async {
     return _history;
+  }
+
+  @override
+  Future<Pedido> anularPedido(String pedidoId, {String? motivo}) async {
+    return Pedido(
+      id: pedidoId,
+      clienteId: '1',
+      direccionId: '1',
+      createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
+      fechaEntrega: DateTime.parse('2026-01-16'),
+      cantidadBalones: 1,
+      totalSoles: 55,
+      pagado: true,
+      saldoPendiente: 0,
+      marcaBalon: 'PETROPERU',
+      tipoBalon: 'NORMAL',
+      precioUnitarioCentavos: 5500,
+      montoTotalCentavos: 5500,
+      montoPendienteCentavos: 0,
+      estado: PedidoEstado.anulado,
+      anuladoAt: DateTime.parse('2026-01-16T11:00:00-05:00'),
+      anuladoMotivo: motivo,
+    );
+  }
+
+  @override
+  Future<Pedido> editarPedido(
+    String pedidoId,
+    PedidoUpdateRequest request,
+  ) async {
+    return Pedido(
+      id: pedidoId,
+      clienteId: '1',
+      direccionId: '1',
+      createdAt: DateTime.parse('2026-01-16T10:45:03.084894-05:00'),
+      fechaEntrega: DateTime.parse('2026-01-16'),
+      cantidadBalones: request.cantidadBalones ?? 1,
+      totalSoles: (request.montoTotalCentavos ?? 5500) / 100,
+      pagado: request.pagado ?? true,
+      saldoPendiente: (request.montoPendienteCentavos ?? 0) / 100,
+      marcaBalon: request.marcaBalon ?? 'PETROPERU',
+      tipoBalon: request.tipoBalon ?? 'NORMAL',
+      precioUnitarioCentavos: request.precioUnitarioCentavos,
+      montoTotalCentavos: request.montoTotalCentavos,
+      montoPendienteCentavos: request.montoPendienteCentavos,
+      pesoBalonKg: request.pesoBalonKg ?? 10,
+    );
   }
 }
 
@@ -1021,5 +1104,37 @@ class _FakeReportesService implements ReportesService {
       throw error;
     }
     return _deudas!;
+  }
+
+  @override
+  Future<ReporteSemanal> obtenerReporteSemana(DateTime desde) async {
+    return ReporteSemanal(
+      desde: desde,
+      hasta: desde.add(const Duration(days: 6)),
+      pedidosCount: 0,
+      balonesVendidos: 0,
+      balonesVendidos10kg: 0,
+      balonesVendidos45kg: 0,
+      montoTotalCentavos: 0,
+      montoCobradoCentavos: 0,
+      montoPendienteCentavos: 0,
+      dias: const [],
+    );
+  }
+
+  @override
+  Future<ReporteMensual> obtenerReporteMes(DateTime mes) async {
+    return ReporteMensual(
+      mes:
+          '${mes.year}-${mes.month.toString().padLeft(2, '0')}',
+      pedidosCount: 0,
+      balonesVendidos: 0,
+      balonesVendidos10kg: 0,
+      balonesVendidos45kg: 0,
+      montoTotalCentavos: 0,
+      montoCobradoCentavos: 0,
+      montoPendienteCentavos: 0,
+      dias: const [],
+    );
   }
 }

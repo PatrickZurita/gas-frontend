@@ -5,15 +5,23 @@ import '../../../shared/loading_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/metric_card.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/pedido_service.dart';
 import '../models/reporte_diario.dart';
 import '../money_format.dart';
 import '../screens/pedidos_dia_screen.dart';
 import '../services/reportes_service.dart';
 
 class ResumenDiaSection extends StatefulWidget {
-  const ResumenDiaSection({required this.reportesService, super.key});
+  const ResumenDiaSection({
+    required this.reportesService,
+    this.pedidoService,
+    this.onCambioPedido,
+    super.key,
+  });
 
   final ReportesService reportesService;
+  final PedidoService? pedidoService;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   State<ResumenDiaSection> createState() => ResumenDiaSectionState();
@@ -97,6 +105,8 @@ class ResumenDiaSectionState extends State<ResumenDiaSection> {
           child: _ResumenContent(
             resumen: resumen,
             reportesService: widget.reportesService,
+            pedidoService: widget.pedidoService,
+            onCambioPedido: widget.onCambioPedido,
           ),
         );
       },
@@ -112,10 +122,17 @@ class ResumenDiaSectionState extends State<ResumenDiaSection> {
 }
 
 class _ResumenContent extends StatelessWidget {
-  const _ResumenContent({required this.resumen, required this.reportesService});
+  const _ResumenContent({
+    required this.resumen,
+    required this.reportesService,
+    this.pedidoService,
+    this.onCambioPedido,
+  });
 
   final ReporteDiario resumen;
   final ReportesService reportesService;
+  final PedidoService? pedidoService;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   Widget build(BuildContext context) {
@@ -212,10 +229,11 @@ class _ResumenContent extends StatelessWidget {
         builder:
             (_) => PedidosDiaScreen(
               reportesService: reportesService,
+              pedidoService: pedidoService,
               initialReporte: resumen,
+              onCambioPedido: onCambioPedido,
             ),
       ),
     );
   }
 }
-

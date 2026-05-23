@@ -1,3 +1,5 @@
+import 'stock_por_peso.dart';
+
 class StockResumen {
   const StockResumen({
     required this.fecha,
@@ -9,6 +11,7 @@ class StockResumen {
     required this.stockActual,
     required this.stockFinalFisico,
     required this.cerrado,
+    this.porPeso,
   });
 
   final DateTime fecha;
@@ -20,6 +23,7 @@ class StockResumen {
   final int? stockActual;
   final int? stockFinalFisico;
   final bool cerrado;
+  final StockPorPeso? porPeso;
 
   factory StockResumen.fromJson(Map<String, Object?> json) {
     return StockResumen(
@@ -32,6 +36,9 @@ class StockResumen {
       stockActual: json['stock_actual'] as int?,
       stockFinalFisico: json['stock_final_fisico'] as int?,
       cerrado: json['cerrado'] as bool? ?? false,
+      porPeso: StockPorPeso.fromJson(
+        json['por_peso'] as Map<String, Object?>?,
+      ),
     );
   }
 }
