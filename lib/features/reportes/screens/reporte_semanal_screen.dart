@@ -6,16 +6,25 @@ import '../../../shared/loading_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/metric_card.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/pedido_service.dart';
 import '../models/reporte_dia_breve.dart';
 import '../models/reporte_semanal.dart';
 import '../money_format.dart';
 import '../services/reportes_service.dart';
+import 'pedidos_dia_screen.dart';
 import 'reporte_tablet_layouts.dart';
 
 class ReporteSemanalScreen extends StatefulWidget {
-  const ReporteSemanalScreen({required this.reportesService, super.key});
+  const ReporteSemanalScreen({
+    required this.reportesService,
+    this.pedidoService,
+    this.onCambioPedido,
+    super.key,
+  });
 
   final ReportesService reportesService;
+  final PedidoService? pedidoService;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   State<ReporteSemanalScreen> createState() => _ReporteSemanalScreenState();
@@ -50,6 +59,21 @@ class _ReporteSemanalScreenState extends State<ReporteSemanalScreen> {
       _desde = _desde.add(Duration(days: dias));
       _load();
     });
+  }
+
+  Future<void> _abrirDia(DateTime fecha) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PedidosDiaScreen(
+          reportesService: widget.reportesService,
+          pedidoService: widget.pedidoService,
+          fecha: fecha,
+          onCambioPedido: widget.onCambioPedido,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _refresh();
   }
 
   @override
@@ -98,6 +122,7 @@ class _ReporteSemanalScreenState extends State<ReporteSemanalScreen> {
                         onPrev: () => _moverSemana(-7),
                         onNext: () => _moverSemana(7),
                       ),
+                      onAbrirDia: _abrirDia,
                     );
                   }
 
@@ -113,7 +138,10 @@ class _ReporteSemanalScreenState extends State<ReporteSemanalScreen> {
                       const SizedBox(height: 12),
                       _ResumenSemanaMobile(reporte: reporte),
                       const SizedBox(height: 16),
-                      _DiasList(dias: reporte.dias),
+                      _DiasList(
+                        dias: reporte.dias,
+                        onAbrirDia: _abrirDia,
+                      ),
                     ],
                   );
                 },
@@ -261,9 +289,10 @@ class _ResumenSemanaMobile extends StatelessWidget {
 }
 
 class _DiasList extends StatelessWidget {
-  const _DiasList({required this.dias});
+  const _DiasList({required this.dias, this.onAbrirDia});
 
   final List<ReporteDiaBreve> dias;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +305,12 @@ class _DiasList extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < dias.length; i++) ...[
-            DiaBreveTile(dia: dias[i]),
+            DiaBreveTile(
+              dia: dias[i],
+              onTap: onAbrirDia == null || dias[i].pedidosCount == 0
+                  ? null
+                  : () => onAbrirDia!(dias[i].fecha),
+            ),
             if (i < dias.length - 1)
               Divider(
                 height: 1,

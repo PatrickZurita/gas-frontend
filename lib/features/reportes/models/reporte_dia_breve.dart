@@ -20,15 +20,17 @@ class ReporteDiaBreve {
   final int montoPendienteCentavos;
 
   factory ReporteDiaBreve.fromJson(Map<String, Object?> json) {
+    final balones10 = json['balones_10kg'] as int? ?? 0;
+    final balones45 = json['balones_45kg'] as int? ?? 0;
     return ReporteDiaBreve(
       fecha: DateTime.parse(json['fecha'] as String),
       pedidosCount: json['pedidos_count'] as int? ?? 0,
-      balonesVendidos: json['balones_vendidos'] as int? ?? 0,
-      balonesVendidos10kg: json['balones_vendidos_10kg'] as int? ?? 0,
-      balonesVendidos45kg: json['balones_vendidos_45kg'] as int? ?? 0,
-      montoTotalCentavos: json['monto_total_centavos'] as int? ?? 0,
-      montoCobradoCentavos: json['monto_cobrado_centavos'] as int? ?? 0,
-      montoPendienteCentavos: json['monto_pendiente_centavos'] as int? ?? 0,
+      balonesVendidos: balones10 + balones45,
+      balonesVendidos10kg: balones10,
+      balonesVendidos45kg: balones45,
+      montoTotalCentavos: json['vendido_centavos'] as int? ?? 0,
+      montoCobradoCentavos: json['cobrado_centavos'] as int? ?? 0,
+      montoPendienteCentavos: json['pendiente_centavos'] as int? ?? 0,
     );
   }
 }

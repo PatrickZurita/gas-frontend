@@ -21,6 +21,7 @@ class PedidosDiaScreen extends StatefulWidget {
     required this.reportesService,
     this.pedidoService,
     this.initialReporte,
+    this.fecha,
     this.onCambioPedido,
     super.key,
   });
@@ -28,6 +29,10 @@ class PedidosDiaScreen extends StatefulWidget {
   final ReportesService reportesService;
   final PedidoService? pedidoService;
   final ReporteDiario? initialReporte;
+
+  /// Si se provee, abre el reporte de esa fecha en vez del resumen de hoy.
+  /// Se ignora si `initialReporte` ya viene precargado.
+  final DateTime? fecha;
   final Future<void> Function()? onCambioPedido;
 
   @override
@@ -42,15 +47,20 @@ class _PedidosDiaScreenState extends State<PedidosDiaScreen> {
   void initState() {
     super.initState();
     final initial = widget.initialReporte;
-    _reporteFuture =
-        initial == null
-            ? widget.reportesService.obtenerResumenHoy()
-            : Future<ReporteDiario>.value(initial);
+    if (initial != null) {
+      _reporteFuture = Future<ReporteDiario>.value(initial);
+    } else if (widget.fecha != null) {
+      _reporteFuture = widget.reportesService.obtenerReporteDia(widget.fecha!);
+    } else {
+      _reporteFuture = widget.reportesService.obtenerResumenHoy();
+    }
   }
 
   Future<void> _retry() async {
     setState(() {
-      _reporteFuture = widget.reportesService.obtenerResumenHoy();
+      _reporteFuture = widget.fecha != null
+          ? widget.reportesService.obtenerReporteDia(widget.fecha!)
+          : widget.reportesService.obtenerResumenHoy();
     });
   }
 
@@ -74,10 +84,35 @@ class _PedidosDiaScreenState extends State<PedidosDiaScreen> {
     }
   }
 
+  String _tituloAppBar() {
+    final fecha = widget.fecha;
+    if (fecha == null) return 'Pedidos de hoy';
+    final hoy = DateTime.now();
+    final esHoy = fecha.year == hoy.year &&
+        fecha.month == hoy.month &&
+        fecha.day == hoy.day;
+    if (esHoy) return 'Pedidos de hoy';
+    const meses = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return 'Pedidos ${fecha.day} ${meses[fecha.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pedidos de hoy')),
+      appBar: AppBar(title: Text(_tituloAppBar())),
       body: SafeArea(
         child: FutureBuilder<ReporteDiario>(
           future: _reporteFuture,

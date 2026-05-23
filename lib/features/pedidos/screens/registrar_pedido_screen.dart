@@ -9,6 +9,7 @@ import '../../../shared/number_input_control.dart';
 import '../../../shared/peso_balon_selector.dart';
 import '../../clientes/models/cliente.dart';
 import '../../stock/models/catalogo_item.dart';
+import '../../stock/models/stock_resumen.dart';
 import '../../stock/services/stock_service.dart';
 import '../models/pedido_create_request.dart';
 import '../pedido_service.dart';
@@ -44,6 +45,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   String _marcaBalon = 'PETROPERU';
   String _tipoBalon = 'NORMAL';
   int _pesoBalonKg = 10;
+  StockResumen? _stock;
   List<CatalogoItem> _marcas = const [
     CatalogoItem(codigo: 'PETROPERU', nombre: 'Petroperu'),
     CatalogoItem(codigo: 'SOLGAS', nombre: 'Solgas'),
@@ -64,6 +66,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   void initState() {
     super.initState();
     _loadCatalogos();
+    _loadStock();
   }
 
   Future<void> _loadCatalogos() async {
@@ -82,6 +85,27 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
     } catch (_) {
       // Defaults keep the order flow usable when catalogs cannot load.
     }
+  }
+
+  Future<void> _loadStock() async {
+    try {
+      final stock = await widget.stockService.obtenerResumenHoy();
+      if (!mounted) return;
+      setState(() {
+        _stock = stock;
+      });
+    } catch (_) {
+      // El backend puede no responder; seguimos permitiendo el flujo
+      // pero sin info de stock para validar localmente.
+    }
+  }
+
+  int? get _stockDisponibleSeleccionado {
+    final porPeso = _stock?.porPeso;
+    if (porPeso == null) return _stock?.stockActual;
+    return _pesoBalonKg == 45
+        ? porPeso.stockActual45kg
+        : porPeso.stockActual10kg;
   }
 
   Future<void> _guardarPedido() async {
@@ -103,6 +127,24 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
     if (precioCentavos == null || precioCentavos <= 0) {
       setState(() {
         _message = 'El precio debe ser mayor a 0.';
+        _saved = false;
+      });
+      return;
+    }
+
+    final disponible = _stockDisponibleSeleccionado;
+    if (disponible != null && disponible <= 0) {
+      setState(() {
+        _message =
+            'No tienes stock de balones de $_pesoBalonKg kg. Registra una entrada antes de crear el pedido.';
+        _saved = false;
+      });
+      return;
+    }
+    if (disponible != null && cantidad > disponible) {
+      setState(() {
+        _message =
+            'Solo tienes $disponible balon(es) de $_pesoBalonKg kg disponibles. Ajusta la cantidad o registra una entrada.';
         _saved = false;
       });
       return;
@@ -207,7 +249,13 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               enabled: !_isSaving,
               onChanged: (value) => setState(() {
                 _pesoBalonKg = value;
+                if (_message != null) _message = null;
               }),
+            ),
+            const SizedBox(height: 10),
+            _StockDisponibleHint(
+              pesoKg: _pesoBalonKg,
+              disponible: _stockDisponibleSeleccionado,
             ),
             const SizedBox(height: 16),
             TextField(
@@ -309,7 +357,11 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               label: _isSaving ? 'Guardando...' : 'Guardar pedido',
               icon: Icons.save,
               primary: true,
-              onPressed: _isSaving ? null : _guardarPedido,
+              onPressed: (_isSaving ||
+                      (_stockDisponibleSeleccionado != null &&
+                          _stockDisponibleSeleccionado! <= 0))
+                  ? null
+                  : _guardarPedido,
             ),
           ],
         ),
@@ -346,6 +398,77 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
     }
 
     return soles * 100 + cents;
+  }
+}
+
+class _StockDisponibleHint extends StatelessWidget {
+  const _StockDisponibleHint({required this.pesoKg, required this.disponible});
+
+  final int pesoKg;
+  final int? disponible;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    if (disponible == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline,
+                size: 20, color: colors.onSurfaceVariant),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Stock no verificado',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final sinStock = disponible! <= 0;
+    final bgColor = sinStock
+        ? colors.errorContainer.withValues(alpha: 0.55)
+        : colors.primaryContainer.withValues(alpha: 0.45);
+    final borderColor = sinStock ? colors.error : colors.primary;
+    final iconData =
+        sinStock ? Icons.error_outline : Icons.check_circle_outline;
+    final textColor = sinStock ? colors.error : colors.onSurface;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Icon(iconData, size: 24, color: borderColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              sinStock
+                  ? 'Sin stock de $pesoKg kg. Registra una entrada antes de crear el pedido.'
+                  : 'Stock disponible $pesoKg kg: $disponible',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

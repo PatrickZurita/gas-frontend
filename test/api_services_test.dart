@@ -421,13 +421,12 @@ void main() {
               jsonEncode({
                 'desde': '2026-05-18',
                 'hasta': '2026-05-24',
-                'pedidos_count': 12,
-                'balones_vendidos': 14,
-                'balones_vendidos_10kg': 12,
-                'balones_vendidos_45kg': 2,
-                'monto_total_centavos': 81000,
-                'monto_cobrado_centavos': 76000,
-                'monto_pendiente_centavos': 5000,
+                'total_pedidos': 12,
+                'balones_10kg': 12,
+                'balones_45kg': 2,
+                'total_vendido_centavos': 81000,
+                'total_cobrado_centavos': 76000,
+                'total_pendiente_centavos': 5000,
                 'dias': <Map<String, Object?>>[],
               }),
               200,
@@ -443,8 +442,13 @@ void main() {
       expect(capturedRequest.method, 'GET');
       expect(capturedRequest.url.path, '/reportes/semana');
       expect(capturedRequest.url.queryParameters['desde'], '2026-05-18');
+      expect(reporte.pedidosCount, 12);
       expect(reporte.balonesVendidos10kg, 12);
       expect(reporte.balonesVendidos45kg, 2);
+      expect(reporte.balonesVendidos, 14);
+      expect(reporte.montoTotalCentavos, 81000);
+      expect(reporte.montoCobradoCentavos, 76000);
+      expect(reporte.montoPendienteCentavos, 5000);
     });
 
     test('gets monthly report from /reportes/mes', () async {
@@ -457,13 +461,12 @@ void main() {
             return http.Response(
               jsonEncode({
                 'mes': '2026-05',
-                'pedidos_count': 50,
-                'balones_vendidos': 60,
-                'balones_vendidos_10kg': 55,
-                'balones_vendidos_45kg': 5,
-                'monto_total_centavos': 330000,
-                'monto_cobrado_centavos': 310000,
-                'monto_pendiente_centavos': 20000,
+                'total_pedidos': 50,
+                'balones_10kg': 55,
+                'balones_45kg': 5,
+                'total_vendido_centavos': 330000,
+                'total_cobrado_centavos': 310000,
+                'total_pendiente_centavos': 20000,
                 'dias': <Map<String, Object?>>[],
               }),
               200,
@@ -479,7 +482,11 @@ void main() {
       expect(capturedRequest.url.path, '/reportes/mes');
       expect(capturedRequest.url.queryParameters['mes'], '2026-05');
       expect(reporte.mes, '2026-05');
+      expect(reporte.pedidosCount, 50);
+      expect(reporte.balonesVendidos10kg, 55);
       expect(reporte.balonesVendidos45kg, 5);
+      expect(reporte.balonesVendidos, 60);
+      expect(reporte.montoTotalCentavos, 330000);
     });
 
     test('gets debts summary from /reportes/deudas', () async {

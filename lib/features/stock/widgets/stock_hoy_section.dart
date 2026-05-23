@@ -271,27 +271,17 @@ class _StockContent extends StatelessWidget {
       );
     }
 
+    final porPeso = stock.porPeso;
+    final stock10 = porPeso?.stockActual10kg ?? stock.stockActual ?? 0;
+    final stock45 = porPeso?.stockActual45kg ?? 0;
+
     return SummaryCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Balones disponibles',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                ),
-              ),
-              Text(
-                '${stock.stockActual ?? 0}',
-                style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+          const Text(
+            'Balones disponibles',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
@@ -302,21 +292,31 @@ class _StockContent extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _StockPesoCard(
+                  pesoLabel: '10 kg',
+                  cantidad: stock10,
+                  icon: Icons.propane_tank_outlined,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StockPesoCard(
+                  pesoLabel: '45 kg',
+                  cantidad: stock45,
+                  icon: Icons.propane_tank,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (stock.porPeso?.stockActual10kg != null)
-                DataChip(
-                  label: '10 kg',
-                  value: '${stock.porPeso!.stockActual10kg}',
-                ),
-              if (stock.porPeso?.stockActual45kg != null)
-                DataChip(
-                  label: '45 kg',
-                  value: '${stock.porPeso!.stockActual45kg}',
-                ),
               DataChip(label: 'Vendidos hoy', value: '${stock.salidas}'),
               DataChip(label: 'Inicio', value: '${stock.stockInicial ?? 0}'),
               if (stock.entradas > 0)
@@ -364,6 +364,76 @@ class _StockContent extends StatelessWidget {
       return '+$ajustes';
     }
     return '$ajustes';
+  }
+}
+
+class _StockPesoCard extends StatelessWidget {
+  const _StockPesoCard({
+    required this.pesoLabel,
+    required this.cantidad,
+    required this.icon,
+  });
+
+  final String pesoLabel;
+  final int cantidad;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final sinStock = cantidad <= 0;
+    final bgColor = sinStock
+        ? colors.errorContainer.withValues(alpha: 0.45)
+        : colors.primaryContainer.withValues(alpha: 0.55);
+    final borderColor = sinStock ? colors.error : colors.primary;
+    final cantidadColor = sinStock ? colors.error : colors.onSurface;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor.withValues(alpha: 0.4), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 22, color: borderColor),
+              const SizedBox(width: 6),
+              Text(
+                pesoLabel,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: borderColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$cantidad',
+            style: TextStyle(
+              fontSize: 38,
+              fontWeight: FontWeight.w900,
+              color: cantidadColor,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sinStock ? 'Sin stock' : 'disponibles',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: cantidadColor.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

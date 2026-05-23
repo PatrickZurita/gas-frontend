@@ -8,6 +8,8 @@ class StockPorPeso {
     this.entradas45kg = 0,
     this.ajustes10kg = 0,
     this.ajustes45kg = 0,
+    this.reversas10kg = 0,
+    this.reversas45kg = 0,
   });
 
   final int? stockActual10kg;
@@ -18,20 +20,32 @@ class StockPorPeso {
   final int entradas45kg;
   final int ajustes10kg;
   final int ajustes45kg;
+  final int reversas10kg;
+  final int reversas45kg;
 
+  bool get sinStock10kg => (stockActual10kg ?? 0) <= 0;
+  bool get sinStock45kg => (stockActual45kg ?? 0) <= 0;
+
+  /// Backend devuelve:
+  /// `por_peso: { "10kg": {salidas, entradas, reversas, ajustes, stock_disponible},
+  ///              "45kg": {...} }`
   static StockPorPeso? fromJson(Map<String, Object?>? json) {
     if (json == null) {
       return null;
     }
+    final diezKg = json['10kg'] as Map<String, Object?>? ?? const {};
+    final cuarentaYCincoKg = json['45kg'] as Map<String, Object?>? ?? const {};
     return StockPorPeso(
-      stockActual10kg: json['stock_actual_10kg'] as int?,
-      stockActual45kg: json['stock_actual_45kg'] as int?,
-      salidas10kg: json['salidas_10kg'] as int? ?? 0,
-      salidas45kg: json['salidas_45kg'] as int? ?? 0,
-      entradas10kg: json['entradas_10kg'] as int? ?? 0,
-      entradas45kg: json['entradas_45kg'] as int? ?? 0,
-      ajustes10kg: json['ajustes_10kg'] as int? ?? 0,
-      ajustes45kg: json['ajustes_45kg'] as int? ?? 0,
+      stockActual10kg: diezKg['stock_disponible'] as int?,
+      stockActual45kg: cuarentaYCincoKg['stock_disponible'] as int?,
+      salidas10kg: diezKg['salidas'] as int? ?? 0,
+      salidas45kg: cuarentaYCincoKg['salidas'] as int? ?? 0,
+      entradas10kg: diezKg['entradas'] as int? ?? 0,
+      entradas45kg: cuarentaYCincoKg['entradas'] as int? ?? 0,
+      ajustes10kg: diezKg['ajustes'] as int? ?? 0,
+      ajustes45kg: cuarentaYCincoKg['ajustes'] as int? ?? 0,
+      reversas10kg: diezKg['reversas'] as int? ?? 0,
+      reversas45kg: cuarentaYCincoKg['reversas'] as int? ?? 0,
     );
   }
 }

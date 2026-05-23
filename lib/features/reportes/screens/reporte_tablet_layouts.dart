@@ -87,11 +87,13 @@ class TabletSemanalLayout extends StatefulWidget {
   const TabletSemanalLayout({
     required this.reporte,
     required this.header,
+    this.onAbrirDia,
     super.key,
   });
 
   final ReporteSemanal reporte;
   final Widget header;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   State<TabletSemanalLayout> createState() => _TabletSemanalLayoutState();
@@ -151,6 +153,7 @@ class _TabletSemanalLayoutState extends State<TabletSemanalLayout> {
                   child: _DetalleTablet(
                     reporte: widget.reporte,
                     dia: _seleccionado,
+                    onAbrirDia: widget.onAbrirDia,
                   ),
                 ),
               ],
@@ -166,11 +169,13 @@ class TabletMensualLayout extends StatefulWidget {
   const TabletMensualLayout({
     required this.reporte,
     required this.header,
+    this.onAbrirDia,
     super.key,
   });
 
   final ReporteMensual reporte;
   final Widget header;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   State<TabletMensualLayout> createState() => _TabletMensualLayoutState();
@@ -230,6 +235,7 @@ class _TabletMensualLayoutState extends State<TabletMensualLayout> {
                   child: _DetalleMensualTablet(
                     reporte: widget.reporte,
                     dia: _seleccionado,
+                    onAbrirDia: widget.onAbrirDia,
                   ),
                 ),
               ],
@@ -288,10 +294,15 @@ class _DiasListaTablet extends StatelessWidget {
 }
 
 class _DetalleTablet extends StatelessWidget {
-  const _DetalleTablet({required this.reporte, required this.dia});
+  const _DetalleTablet({
+    required this.reporte,
+    required this.dia,
+    this.onAbrirDia,
+  });
 
   final ReporteSemanal reporte;
   final ReporteDiaBreve? dia;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   Widget build(BuildContext context) {
@@ -356,17 +367,22 @@ class _DetalleTablet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        if (dia != null) _DetalleDia(dia: dia!),
+        if (dia != null) _DetalleDia(dia: dia!, onAbrirDia: onAbrirDia),
       ],
     );
   }
 }
 
 class _DetalleMensualTablet extends StatelessWidget {
-  const _DetalleMensualTablet({required this.reporte, required this.dia});
+  const _DetalleMensualTablet({
+    required this.reporte,
+    required this.dia,
+    this.onAbrirDia,
+  });
 
   final ReporteMensual reporte;
   final ReporteDiaBreve? dia;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   Widget build(BuildContext context) {
@@ -431,20 +447,22 @@ class _DetalleMensualTablet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        if (dia != null) _DetalleDia(dia: dia!),
+        if (dia != null) _DetalleDia(dia: dia!, onAbrirDia: onAbrirDia),
       ],
     );
   }
 }
 
 class _DetalleDia extends StatelessWidget {
-  const _DetalleDia({required this.dia});
+  const _DetalleDia({required this.dia, this.onAbrirDia});
 
   final ReporteDiaBreve dia;
+  final void Function(DateTime fecha)? onAbrirDia;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final puedeAbrir = onAbrirDia != null && dia.pedidosCount > 0;
     return SummaryCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -504,6 +522,21 @@ class _DetalleDia extends StatelessWidget {
               DataChip(label: 'Balones', value: '${dia.balonesVendidos}'),
             ],
           ),
+          if (puedeAbrir) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => onAbrirDia!(dia.fecha),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Ver pedidos de este dia'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  textStyle: const TextStyle(fontSize: 17),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

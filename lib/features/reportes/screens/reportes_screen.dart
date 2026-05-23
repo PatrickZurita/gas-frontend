@@ -78,7 +78,11 @@ class ReportesScreen extends StatelessWidget {
   void _abrirSemanal(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ReporteSemanalScreen(reportesService: reportesService),
+        builder: (_) => ReporteSemanalScreen(
+          reportesService: reportesService,
+          pedidoService: pedidoService,
+          onCambioPedido: onCambioPedido,
+        ),
       ),
     );
   }
@@ -86,7 +90,11 @@ class ReportesScreen extends StatelessWidget {
   void _abrirMensual(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ReporteMensualScreen(reportesService: reportesService),
+        builder: (_) => ReporteMensualScreen(
+          reportesService: reportesService,
+          pedidoService: pedidoService,
+          onCambioPedido: onCambioPedido,
+        ),
       ),
     );
   }
