@@ -74,51 +74,63 @@ class StockHoySectionState extends State<StockHoySection> {
   }
 
   Future<void> _registrarEntrada() async {
-    final cantidad = await showDialog<int>(
+    final resultado = await showDialog<_StockPesoCantidadResult>(
       context: context,
-      builder:
-          (_) => const _StockNumberDialog(
-            title: 'Agregar balones',
-            description: 'Usa esto cuando llegaron balones al deposito.',
-            confirmLabel: 'Guardar entrada',
-            icon: Icons.add_circle_outline,
-            initialValue: 1,
-          ),
+      builder: (_) => const _StockPesoCantidadDialog(
+        title: 'Agregar balones',
+        description: 'Usa esto cuando llegaron balones al deposito.',
+        confirmLabel: 'Guardar entrada',
+        icon: Icons.add_circle_outline,
+        initialValue: 1,
+      ),
     );
-    if (cantidad == null) {
+    if (resultado == null) {
       return;
     }
 
     await _runOperation(
       () => widget.stockService.registrarEntrada(
-        StockEntradaRequest(fecha: DateTime.now(), cantidad: cantidad),
+        StockEntradaRequest(
+          fecha: DateTime.now(),
+          cantidad: resultado.cantidad,
+          pesoBalonKg: resultado.pesoKg,
+        ),
       ),
-      successMessage: 'Entrada guardada',
+      successMessage: 'Entrada guardada (${resultado.pesoKg} kg)',
     );
   }
 
-  Future<void> _ajustarStock(int? stockActual) async {
-    final cantidad = await showDialog<int>(
+  Future<void> _ajustarStock(StockResumen stock) async {
+    final porPeso = stock.porPeso;
+    final stock10 = porPeso?.stockActual10kg ?? stock.stockActual ?? 0;
+    final stock45 = porPeso?.stockActual45kg ?? 0;
+
+    final resultado = await showDialog<_StockPesoCantidadResult>(
       context: context,
-      builder:
-          (_) => _StockNumberDialog(
-            title: 'Actualizar stock actual',
-            description: 'Registra cuantos balones tienes fisicamente ahora.',
-            confirmLabel: 'Actualizar stock',
-            icon: Icons.fact_check_outlined,
-            initialValue: stockActual ?? 0,
-            allowZero: true,
-          ),
+      builder: (_) => _StockPesoCantidadDialog(
+        title: 'Actualizar stock actual',
+        description:
+            'Cuenta los balones del peso que vas a actualizar y registra el total.',
+        confirmLabel: 'Actualizar stock',
+        icon: Icons.fact_check_outlined,
+        initialValue: stock10,
+        allowZero: true,
+        initialValueFor45kg: stock45,
+      ),
     );
-    if (cantidad == null) {
+    if (resultado == null) {
       return;
     }
 
     await _runOperation(
       () => widget.stockService.ajustarStock(
-        StockAjusteRequest(fecha: DateTime.now(), stockFisico: cantidad),
+        StockAjusteRequest(
+          fecha: DateTime.now(),
+          stockFisico: resultado.cantidad,
+          pesoBalonKg: resultado.pesoKg,
+        ),
       ),
-      successMessage: 'Stock actualizado',
+      successMessage: 'Stock ${resultado.pesoKg} kg actualizado',
     );
   }
 
@@ -200,7 +212,7 @@ class StockHoySectionState extends State<StockHoySection> {
           stock: stock,
           onIniciarDia: _iniciarDia,
           onRegistrarEntrada: _registrarEntrada,
-          onAjustarStock: () => _ajustarStock(stock.stockActual),
+          onAjustarStock: () => _ajustarStock(stock),
         );
       },
     );
@@ -437,13 +449,21 @@ class _StockPesoCard extends StatelessWidget {
   }
 }
 
-class _StockNumberDialog extends StatefulWidget {
-  const _StockNumberDialog({
+class _StockPesoCantidadResult {
+  const _StockPesoCantidadResult({required this.pesoKg, required this.cantidad});
+
+  final int pesoKg;
+  final int cantidad;
+}
+
+class _StockPesoCantidadDialog extends StatefulWidget {
+  const _StockPesoCantidadDialog({
     required this.title,
     required this.description,
     required this.confirmLabel,
     required this.icon,
     this.initialValue = 0,
+    this.initialValueFor45kg,
     this.allowZero = false,
   });
 
@@ -452,6 +472,153 @@ class _StockNumberDialog extends StatefulWidget {
   final String confirmLabel;
   final IconData icon;
   final int initialValue;
+
+  /// Si se provee, al cambiar a 45kg el campo de cantidad se actualiza a
+  /// este valor (utilizado por el ajuste para precargar el stock actual de
+  /// cada peso). Si es null, se mantiene `initialValue` para ambos.
+  final int? initialValueFor45kg;
+  final bool allowZero;
+
+  @override
+  State<_StockPesoCantidadDialog> createState() =>
+      _StockPesoCantidadDialogState();
+}
+
+class _StockPesoCantidadDialogState extends State<_StockPesoCantidadDialog> {
+  late final TextEditingController _cantidadController;
+  int _pesoKg = 10;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cantidadController = TextEditingController(
+      text: widget.initialValue.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _cantidadController.dispose();
+    super.dispose();
+  }
+
+  void _onPesoChanged(int peso) {
+    final inicial = widget.initialValueFor45kg;
+    if (inicial != null) {
+      final nuevoValor = peso == 45 ? inicial : widget.initialValue;
+      _cantidadController.text = nuevoValor.toString();
+    }
+    setState(() {
+      _pesoKg = peso;
+      _error = null;
+    });
+  }
+
+  void _submit() {
+    final cantidad = int.tryParse(_cantidadController.text.trim());
+    final isValid =
+        cantidad != null && (widget.allowZero ? cantidad >= 0 : cantidad > 0);
+    if (!isValid) {
+      setState(() {
+        _error = widget.allowZero
+            ? 'Ingresa 0 o mas balones.'
+            : 'Ingresa una cantidad mayor a 0.';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _StockPesoCantidadResult(pesoKg: _pesoKg, cantidad: cantidad),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(widget.description, style: const TextStyle(fontSize: 17)),
+            const SizedBox(height: 16),
+            const Text(
+              'Peso del balon',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment<int>(
+                  value: 10,
+                  label: Text('10 kg'),
+                  icon: Icon(Icons.propane_tank_outlined),
+                ),
+                ButtonSegment<int>(
+                  value: 45,
+                  label: Text('45 kg'),
+                  icon: Icon(Icons.propane_tank),
+                ),
+              ],
+              selected: {_pesoKg},
+              onSelectionChanged: (selection) => _onPesoChanged(selection.first),
+              style: ButtonStyle(
+                minimumSize: WidgetStateProperty.all(const Size.fromHeight(54)),
+                textStyle: WidgetStateProperty.all(
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            NumberInputControl(
+              controller: _cantidadController,
+              label: 'Cantidad',
+              icon: widget.icon,
+              minValue: widget.allowZero ? 0 : 1,
+              maxValue: 9999,
+              onChanged: () {
+                setState(() {
+                  _error = null;
+                });
+              },
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(onPressed: _submit, child: Text(widget.confirmLabel)),
+      ],
+    );
+  }
+}
+
+class _StockNumberDialog extends StatefulWidget {
+  const _StockNumberDialog({
+    required this.title,
+    required this.description,
+    required this.confirmLabel,
+    required this.icon,
+    this.allowZero = false,
+  });
+
+  final String title;
+  final String description;
+  final String confirmLabel;
+  final IconData icon;
+  final int initialValue = 0;
   final bool allowZero;
 
   @override

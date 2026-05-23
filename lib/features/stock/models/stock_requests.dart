@@ -24,11 +24,13 @@ class StockEntradaRequest {
     required this.fecha,
     required this.cantidad,
     this.observacion,
+    this.pesoBalonKg,
   });
 
   final DateTime fecha;
   final int cantidad;
   final String? observacion;
+  final int? pesoBalonKg;
 
   Map<String, Object?> toJson() {
     return {
@@ -36,6 +38,7 @@ class StockEntradaRequest {
       'cantidad': cantidad,
       if (observacion != null && observacion!.trim().isNotEmpty)
         'observacion': observacion!.trim(),
+      if (pesoBalonKg != null) 'peso_balon_kg': pesoBalonKg,
     };
   }
 }
@@ -45,11 +48,13 @@ class StockAjusteRequest {
     required this.fecha,
     required this.stockFisico,
     this.observacion,
+    this.pesoBalonKg,
   });
 
   final DateTime fecha;
   final int stockFisico;
   final String? observacion;
+  final int? pesoBalonKg;
 
   Map<String, Object?> toJson() {
     return {
@@ -57,6 +62,7 @@ class StockAjusteRequest {
       'stock_fisico': stockFisico,
       if (observacion != null && observacion!.trim().isNotEmpty)
         'observacion': observacion!.trim(),
+      if (pesoBalonKg != null) 'peso_balon_kg': pesoBalonKg,
     };
   }
 }
