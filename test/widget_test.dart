@@ -515,7 +515,7 @@ void main() {
       find.widgetWithText(TextField, 'Precio por balon'),
       '55',
     );
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.drag(find.byType(ListView), const Offset(0, -800));
     await tester.pump();
 
     final saveButton = find.text('Guardar pedido').last;

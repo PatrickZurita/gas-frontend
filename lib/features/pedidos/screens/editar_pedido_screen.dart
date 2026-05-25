@@ -35,6 +35,7 @@ class _EditarPedidoScreenState extends State<EditarPedidoScreen> {
   late String _marcaBalon;
   late String _tipoBalon;
   late int _pesoBalonKg;
+  late MetodoPago _metodoPago;
 
   bool _isSaving = false;
   String? _message;
@@ -54,6 +55,7 @@ class _EditarPedidoScreenState extends State<EditarPedidoScreen> {
     _marcaBalon = p.marcaBalon;
     _tipoBalon = p.tipoBalon;
     _pesoBalonKg = p.pesoBalonKg;
+    _metodoPago = p.metodoPago ?? MetodoPago.efectivo;
   }
 
   @override
@@ -107,6 +109,7 @@ class _EditarPedidoScreenState extends State<EditarPedidoScreen> {
           precioUnitarioCentavos: precioCentavos,
           montoTotalCentavos: montoTotalCentavos,
           montoPendienteCentavos: montoPendienteCentavos,
+          metodoPago: _pagado ? _metodoPago : null,
           motivoEdicion: motivo.isEmpty ? null : motivo,
         ),
       );
@@ -253,6 +256,44 @@ class _EditarPedidoScreenState extends State<EditarPedidoScreen> {
                     WidgetStateProperty.all(const TextStyle(fontSize: 20)),
               ),
             ),
+            if (_pagado) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Como pago',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<MetodoPago>(
+                segments: const [
+                  ButtonSegment<MetodoPago>(
+                    value: MetodoPago.efectivo,
+                    label: Text('Efectivo'),
+                    icon: Icon(Icons.payments_outlined),
+                  ),
+                  ButtonSegment<MetodoPago>(
+                    value: MetodoPago.yape,
+                    label: Text('Yape'),
+                    icon: Icon(Icons.phone_iphone),
+                  ),
+                ],
+                selected: {_metodoPago},
+                onSelectionChanged: _isSaving
+                    ? null
+                    : (selection) {
+                        setState(() {
+                          _metodoPago = selection.first;
+                        });
+                      },
+                style: ButtonStyle(
+                  minimumSize:
+                      WidgetStateProperty.all(const Size.fromHeight(60)),
+                  textStyle:
+                      WidgetStateProperty.all(const TextStyle(fontSize: 20)),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _motivoController,

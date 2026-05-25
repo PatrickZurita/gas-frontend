@@ -1,3 +1,5 @@
+import 'pedido.dart';
+
 class PedidoUpdateRequest {
   const PedidoUpdateRequest({
     this.cantidadBalones,
@@ -9,6 +11,7 @@ class PedidoUpdateRequest {
     this.precioUnitarioCentavos,
     this.montoTotalCentavos,
     this.montoPendienteCentavos,
+    this.metodoPago,
     this.motivoEdicion,
   });
 
@@ -21,6 +24,7 @@ class PedidoUpdateRequest {
   final int? precioUnitarioCentavos;
   final int? montoTotalCentavos;
   final int? montoPendienteCentavos;
+  final MetodoPago? metodoPago;
   final String? motivoEdicion;
 
   bool get isEmpty =>
@@ -33,6 +37,7 @@ class PedidoUpdateRequest {
       precioUnitarioCentavos == null &&
       montoTotalCentavos == null &&
       montoPendienteCentavos == null &&
+      metodoPago == null &&
       motivoEdicion == null;
 
   Map<String, Object?> toJson() {
@@ -49,6 +54,7 @@ class PedidoUpdateRequest {
         'monto_total_centavos': montoTotalCentavos,
       if (montoPendienteCentavos != null)
         'monto_pendiente_centavos': montoPendienteCentavos,
+      if (metodoPago != null) 'metodo_pago': metodoPagoToBackend(metodoPago!),
       if (motivoEdicion != null) 'motivo_edicion': motivoEdicion,
     };
   }

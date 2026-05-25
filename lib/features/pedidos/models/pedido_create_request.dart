@@ -1,4 +1,5 @@
 import '../../../core/network/json_helpers.dart';
+import 'pedido.dart';
 
 class PedidoCreateRequest {
   const PedidoCreateRequest({
@@ -12,6 +13,7 @@ class PedidoCreateRequest {
     this.precioUnitarioCentavos,
     this.montoTotalCentavos,
     this.montoPendienteCentavos,
+    this.metodoPago,
   });
 
   final String clienteId;
@@ -24,6 +26,10 @@ class PedidoCreateRequest {
   final int? precioUnitarioCentavos;
   final int? montoTotalCentavos;
   final int? montoPendienteCentavos;
+
+  /// Solo aplica cuando `pagado=true`. Backend valida y rechaza con 422 si
+  /// se envia `metodo_pago` con `pagado=false`.
+  final MetodoPago? metodoPago;
 
   Map<String, Object?> toJson() {
     return {
@@ -40,6 +46,8 @@ class PedidoCreateRequest {
       if (montoPendienteCentavos != null)
         'monto_pendiente_centavos': montoPendienteCentavos,
       if (totalSoles != null) 'total_soles': totalSoles,
+      if (metodoPago != null && pagado)
+        'metodo_pago': metodoPagoToBackend(metodoPago!),
     };
   }
 

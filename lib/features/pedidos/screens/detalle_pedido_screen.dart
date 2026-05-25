@@ -203,6 +203,11 @@ class _DetallePedidoScreenState extends State<DetallePedidoScreen> {
                         label: 'Tipo',
                         value: _displayCode(_pedido.tipoBalon),
                       ),
+                      if (_pedido.pagado && _pedido.metodoPago != null)
+                        DataChip(
+                          label: 'Pago',
+                          value: metodoPagoLabel(_pedido.metodoPago!),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),

@@ -13,6 +13,23 @@ String pedidoEstadoToString(PedidoEstado estado) {
   return estado == PedidoEstado.anulado ? 'ANULADO' : 'ACTIVO';
 }
 
+enum MetodoPago { efectivo, yape }
+
+MetodoPago? parseMetodoPago(Object? value) {
+  if (value is String) {
+    final upper = value.toUpperCase();
+    if (upper == 'YAPE') return MetodoPago.yape;
+    if (upper == 'EFECTIVO') return MetodoPago.efectivo;
+  }
+  return null;
+}
+
+String metodoPagoToBackend(MetodoPago metodo) =>
+    metodo == MetodoPago.yape ? 'YAPE' : 'EFECTIVO';
+
+String metodoPagoLabel(MetodoPago metodo) =>
+    metodo == MetodoPago.yape ? 'Yape' : 'Efectivo';
+
 class Pedido {
   const Pedido({
     required this.id,
@@ -34,6 +51,7 @@ class Pedido {
     this.anuladoAt,
     this.anuladoMotivo,
     this.updatedAt,
+    this.metodoPago,
   });
 
   final String id;
@@ -55,6 +73,7 @@ class Pedido {
   final DateTime? anuladoAt;
   final String? anuladoMotivo;
   final DateTime? updatedAt;
+  final MetodoPago? metodoPago;
 
   bool get esAnulado => estado == PedidoEstado.anulado;
 
@@ -79,6 +98,7 @@ class Pedido {
       anuladoAt: _parseDateTime(json['anulado_at']),
       anuladoMotivo: json['anulado_motivo'] as String?,
       updatedAt: _parseDateTime(json['updated_at']),
+      metodoPago: parseMetodoPago(json['metodo_pago']),
     );
   }
 

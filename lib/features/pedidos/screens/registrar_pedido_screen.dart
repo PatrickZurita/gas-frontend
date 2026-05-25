@@ -11,6 +11,7 @@ import '../../clientes/models/cliente.dart';
 import '../../stock/models/catalogo_item.dart';
 import '../../stock/models/stock_resumen.dart';
 import '../../stock/services/stock_service.dart';
+import '../models/pedido.dart';
 import '../models/pedido_create_request.dart';
 import '../pedido_service.dart';
 
@@ -45,6 +46,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   String _marcaBalon = 'PETROPERU';
   String _tipoBalon = 'NORMAL';
   int _pesoBalonKg = 10;
+  MetodoPago _metodoPago = MetodoPago.efectivo;
   StockResumen? _stock;
   List<CatalogoItem> _marcas = const [
     CatalogoItem(codigo: 'PETROPERU', nombre: 'Petroperu'),
@@ -170,6 +172,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
           precioUnitarioCentavos: precioCentavos,
           montoTotalCentavos: montoTotalCentavos,
           montoPendienteCentavos: _pagado ? 0 : montoTotalCentavos,
+          metodoPago: _pagado ? _metodoPago : null,
         ),
       );
       if (!mounted) {
@@ -346,6 +349,44 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
                 ),
               ),
             ),
+            if (_pagado) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Como pago',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<MetodoPago>(
+                segments: const [
+                  ButtonSegment<MetodoPago>(
+                    value: MetodoPago.efectivo,
+                    label: Text('Efectivo'),
+                    icon: Icon(Icons.payments_outlined),
+                  ),
+                  ButtonSegment<MetodoPago>(
+                    value: MetodoPago.yape,
+                    label: Text('Yape'),
+                    icon: Icon(Icons.phone_iphone),
+                  ),
+                ],
+                selected: {_metodoPago},
+                onSelectionChanged: _isSaving
+                    ? null
+                    : (selection) {
+                        setState(() {
+                          _metodoPago = selection.first;
+                        });
+                      },
+                style: ButtonStyle(
+                  minimumSize:
+                      WidgetStateProperty.all(const Size.fromHeight(60)),
+                  textStyle:
+                      WidgetStateProperty.all(const TextStyle(fontSize: 20)),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             if (_message != null)
               MessageBox(
