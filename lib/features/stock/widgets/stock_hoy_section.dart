@@ -6,6 +6,7 @@ import '../../../shared/loading_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/number_input_control.dart';
 import '../../../shared/summary_card.dart';
+import '../models/stock_continuar_preview.dart';
 import '../models/stock_requests.dart';
 import '../models/stock_resumen.dart';
 import '../services/stock_service.dart';
@@ -21,6 +22,7 @@ class StockHoySection extends StatefulWidget {
 
 class StockHoySectionState extends State<StockHoySection> {
   late Future<StockResumen> _stockFuture;
+  StockContinuarPreview? _preview;
 
   @override
   void initState() {
@@ -29,7 +31,31 @@ class StockHoySectionState extends State<StockHoySection> {
   }
 
   void _loadStock() {
-    _stockFuture = widget.stockService.obtenerResumenHoy();
+    _stockFuture = widget.stockService.obtenerResumenHoy().then((stock) async {
+      if (!stock.stockIniciado) {
+        await _loadPreviewContinuar();
+      } else if (mounted) {
+        setState(() {
+          _preview = null;
+        });
+      }
+      return stock;
+    });
+  }
+
+  Future<void> _loadPreviewContinuar() async {
+    try {
+      final preview = await widget.stockService.obtenerPreviewContinuar();
+      if (!mounted) return;
+      setState(() {
+        _preview = preview;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _preview = null;
+      });
+    }
   }
 
   void _retry() {
@@ -39,7 +65,16 @@ class StockHoySectionState extends State<StockHoySection> {
   Future<void> refresh() async {
     late final Future<StockResumen> nextFuture;
     setState(() {
-      nextFuture = widget.stockService.obtenerResumenHoy();
+      nextFuture = widget.stockService.obtenerResumenHoy().then((stock) async {
+        if (!stock.stockIniciado) {
+          await _loadPreviewContinuar();
+        } else if (mounted) {
+          setState(() {
+            _preview = null;
+          });
+        }
+        return stock;
+      });
       _stockFuture = nextFuture;
     });
     try {
@@ -47,6 +82,13 @@ class StockHoySectionState extends State<StockHoySection> {
     } catch (_) {
       // FutureBuilder renders the latest error state.
     }
+  }
+
+  Future<void> _continuarDeAyer() async {
+    await _runOperation(
+      () => widget.stockService.continuarDeAyer(),
+      successMessage: 'Stock del dia anterior arrastrado',
+    );
   }
 
   Future<void> _iniciarDia() async {
@@ -210,7 +252,9 @@ class StockHoySectionState extends State<StockHoySection> {
 
         return _StockContent(
           stock: stock,
+          preview: _preview,
           onIniciarDia: _iniciarDia,
+          onContinuarDeAyer: _continuarDeAyer,
           onRegistrarEntrada: _registrarEntrada,
           onAjustarStock: () => _ajustarStock(stock),
         );
@@ -232,16 +276,21 @@ class _StockContent extends StatelessWidget {
     required this.onIniciarDia,
     required this.onRegistrarEntrada,
     required this.onAjustarStock,
+    required this.onContinuarDeAyer,
+    this.preview,
   });
 
   final StockResumen stock;
+  final StockContinuarPreview? preview;
   final VoidCallback onIniciarDia;
+  final VoidCallback onContinuarDeAyer;
   final VoidCallback onRegistrarEntrada;
   final VoidCallback onAjustarStock;
 
   @override
   Widget build(BuildContext context) {
     if (!stock.stockIniciado) {
+      final puedeContinuar = preview?.puedeContinuar ?? false;
       return SummaryCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -259,25 +308,50 @@ class _StockContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Todavia no se registro cuantos balones hay en el deposito.',
-              style: TextStyle(fontSize: 18),
+            Text(
+              puedeContinuar
+                  ? 'El stock del dia aun no esta registrado.'
+                  : 'Todavia no se registro cuantos balones hay en el deposito.',
+              style: const TextStyle(fontSize: 18),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Cuenta los balones y guarda el numero.',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: onIniciarDia,
-              icon: const Icon(Icons.flag_outlined),
-              label: const Text('Registrar stock de hoy'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(64),
-                textStyle: const TextStyle(fontSize: 18),
+            if (puedeContinuar) ...[
+              const SizedBox(height: 14),
+              _ContinuarDeAyerCard(
+                preview: preview!,
+                onContinuar: onContinuarDeAyer,
               ),
-            ),
+              const SizedBox(height: 14),
+              const Text(
+                'O registra un conteo fisico nuevo:',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: onIniciarDia,
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Hacer conteo fisico nuevo'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(60),
+                  textStyle: const TextStyle(fontSize: 17),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Cuenta los balones y guarda el numero.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: onIniciarDia,
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Registrar stock de hoy'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(64),
+                  textStyle: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -441,6 +515,142 @@ class _StockPesoCard extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: cantidadColor.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContinuarDeAyerCard extends StatelessWidget {
+  const _ContinuarDeAyerCard({required this.preview, required this.onContinuar});
+
+  final StockContinuarPreview preview;
+  final VoidCallback onContinuar;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final fechaOrigen = preview.fechaOrigen;
+    final etiquetaFecha = fechaOrigen == null
+        ? 'dia anterior'
+        : _formatFecha(fechaOrigen);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history, size: 24, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Stock guardado de $etiquetaFecha',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _PesoChipGrande(
+                  pesoLabel: '10 kg',
+                  cantidad: preview.stock10kg,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PesoChipGrande(
+                  pesoLabel: '45 kg',
+                  cantidad: preview.stock45kg,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: onContinuar,
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Continuar con este stock'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(60),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFecha(DateTime fecha) {
+    final hoy = DateTime.now();
+    final ayer = DateTime(hoy.year, hoy.month, hoy.day - 1);
+    final solo = DateTime(fecha.year, fecha.month, fecha.day);
+    if (solo == ayer) return 'ayer';
+    const meses = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return '${fecha.day} ${meses[fecha.month - 1]}';
+  }
+}
+
+class _PesoChipGrande extends StatelessWidget {
+  const _PesoChipGrande({required this.pesoLabel, required this.cantidad});
+
+  final String pesoLabel;
+  final int cantidad;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Text(
+            pesoLabel,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$cantidad',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              height: 1.0,
             ),
           ),
         ],

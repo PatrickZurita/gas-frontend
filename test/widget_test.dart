@@ -20,6 +20,7 @@ import 'package:gas_frontend/features/reportes/models/reporte_mensual.dart';
 import 'package:gas_frontend/features/reportes/models/reporte_semanal.dart';
 import 'package:gas_frontend/features/reportes/services/reportes_service.dart';
 import 'package:gas_frontend/features/stock/models/catalogo_item.dart';
+import 'package:gas_frontend/features/stock/models/stock_continuar_preview.dart';
 import 'package:gas_frontend/features/stock/models/stock_dia.dart';
 import 'package:gas_frontend/features/stock/models/stock_operacion.dart';
 import 'package:gas_frontend/features/stock/models/stock_requests.dart';
@@ -929,6 +930,16 @@ class _FakeStockService implements StockService {
       CatalogoItem(codigo: 'PETROPERU', nombre: 'Petroperu'),
       CatalogoItem(codigo: 'SOLGAS', nombre: 'Solgas'),
     ];
+  }
+
+  @override
+  Future<StockContinuarPreview> obtenerPreviewContinuar() async {
+    return const StockContinuarPreview(puedeContinuar: false);
+  }
+
+  @override
+  Future<StockResumen> continuarDeAyer() async {
+    throw const ApiException(message: 'No implementado en fake.');
   }
 }
 

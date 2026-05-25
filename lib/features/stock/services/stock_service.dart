@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../models/catalogo_item.dart';
+import '../models/stock_continuar_preview.dart';
 import '../models/stock_dia.dart';
 import '../models/stock_operacion.dart';
 import '../models/stock_requests.dart';
@@ -19,6 +20,10 @@ abstract interface class StockService {
   Future<List<CatalogoItem>> obtenerTiposBalon();
 
   Future<List<CatalogoItem>> obtenerMarcasBalon();
+
+  Future<StockContinuarPreview> obtenerPreviewContinuar();
+
+  Future<StockResumen> continuarDeAyer();
 }
 
 class ApiStockService implements StockService {
@@ -76,6 +81,18 @@ class ApiStockService implements StockService {
   @override
   Future<List<CatalogoItem>> obtenerMarcasBalon() async {
     return _catalogo('/catalogos/marcas-balon');
+  }
+
+  @override
+  Future<StockContinuarPreview> obtenerPreviewContinuar() async {
+    final json = await _apiClient.getJson('/stock/preview-continuar');
+    return StockContinuarPreview.fromJson(json as Map<String, Object?>);
+  }
+
+  @override
+  Future<StockResumen> continuarDeAyer() async {
+    final json = await _apiClient.postJson('/stock/continuar-de-ayer');
+    return StockResumen.fromJson(json as Map<String, Object?>);
   }
 
   Future<List<CatalogoItem>> _catalogo(String path) async {
