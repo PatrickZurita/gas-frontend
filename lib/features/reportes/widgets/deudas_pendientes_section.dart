@@ -4,14 +4,23 @@ import '../../../core/network/api_exception.dart';
 import '../../../shared/loading_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/pedido_service.dart';
 import '../models/deudas_resumen.dart';
 import '../money_format.dart';
+import '../screens/deudas_screen.dart';
 import '../services/reportes_service.dart';
 
 class DeudasPendientesSection extends StatefulWidget {
-  const DeudasPendientesSection({required this.reportesService, super.key});
+  const DeudasPendientesSection({
+    required this.reportesService,
+    this.pedidoService,
+    this.onCambioPedido,
+    super.key,
+  });
 
   final ReportesService reportesService;
+  final PedidoService? pedidoService;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   State<DeudasPendientesSection> createState() =>
@@ -92,7 +101,15 @@ class DeudasPendientesSectionState extends State<DeudasPendientesSection> {
           return const SizedBox.shrink();
         }
 
-        return _DeudasContent(deudas: deudas);
+        return _DeudasContent(
+          deudas: deudas,
+          reportesService: widget.reportesService,
+          pedidoService: widget.pedidoService,
+          onCambioPedido: () async {
+            await refresh();
+            await widget.onCambioPedido?.call();
+          },
+        );
       },
     );
   }
@@ -106,12 +123,21 @@ class DeudasPendientesSectionState extends State<DeudasPendientesSection> {
 }
 
 class _DeudasContent extends StatelessWidget {
-  const _DeudasContent({required this.deudas});
+  const _DeudasContent({
+    required this.deudas,
+    required this.reportesService,
+    this.pedidoService,
+    this.onCambioPedido,
+  });
 
   final DeudasResumen deudas;
+  final ReportesService reportesService;
+  final PedidoService? pedidoService;
+  final Future<void> Function()? onCambioPedido;
 
   @override
   Widget build(BuildContext context) {
+    final puedeAbrir = deudas.pedidos.isNotEmpty && pedidoService != null;
     return SummaryCard(
       child: Row(
         children: [
@@ -150,8 +176,7 @@ class _DeudasContent extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           OutlinedButton(
-            onPressed:
-                deudas.pedidos.isEmpty ? null : () => _showDeudas(context),
+            onPressed: puedeAbrir ? () => _abrirDeudas(context) : null,
             child: const Text('Ver'),
           ),
         ],
@@ -159,84 +184,18 @@ class _DeudasContent extends StatelessWidget {
     );
   }
 
-  void _showDeudas(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text('Deudas pendientes'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView(
-                shrinkWrap: true,
-                children:
-                    deudas.pedidos.take(8).map((pedido) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _DebtRow(
-                          clienteAlias: pedido.clienteAlias,
-                          balones: pedido.cantidadBalones,
-                          pendienteCentavos: pedido.montoPendienteCentavos,
-                        ),
-                      );
-                    }).toList(),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cerrar'),
-              ),
-            ],
-          ),
-    );
-  }
-}
-
-class _DebtRow extends StatelessWidget {
-  const _DebtRow({
-    required this.clienteAlias,
-    required this.balones,
-    required this.pendienteCentavos,
-  });
-
-  final String clienteAlias;
-  final int balones;
-  final int pendienteCentavos;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  clienteAlias,
-                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text('$balones balones', style: text.titleMedium),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            formatSolesFromCentavos(pendienteCentavos),
-            style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
+  Future<void> _abrirDeudas(BuildContext context) async {
+    final service = pedidoService;
+    if (service == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => DeudasScreen(
+          reportesService: reportesService,
+          pedidoService: service,
+          onCambioPedido: onCambioPedido,
+        ),
       ),
     );
   }
 }
+

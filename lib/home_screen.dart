@@ -144,6 +144,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               DeudasPendientesSection(
                 key: _deudasSectionKey,
                 reportesService: widget.reportesService,
+                pedidoService: widget.pedidoService,
+                onCambioPedido: _refreshHome,
               ),
             ],
           ),
