@@ -363,6 +363,29 @@ class _DetalleTablet extends StatelessWidget {
                   ),
                 ],
               ),
+              if (reporte.montoCobradoEfectivoCentavos > 0 ||
+                  reporte.montoCobradoYapeCentavos > 0) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Cobrado Efectivo',
+                        value: formatSolesFromCentavos(
+                            reporte.montoCobradoEfectivoCentavos),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Cobrado Yape',
+                        value: formatSolesFromCentavos(
+                            reporte.montoCobradoYapeCentavos),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -443,6 +466,29 @@ class _DetalleMensualTablet extends StatelessWidget {
                   ),
                 ],
               ),
+              if (reporte.montoCobradoEfectivoCentavos > 0 ||
+                  reporte.montoCobradoYapeCentavos > 0) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Cobrado Efectivo',
+                        value: formatSolesFromCentavos(
+                            reporte.montoCobradoEfectivoCentavos),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Cobrado Yape',
+                        value: formatSolesFromCentavos(
+                            reporte.montoCobradoYapeCentavos),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -513,6 +559,29 @@ class _DetalleDia extends StatelessWidget {
               ),
             ],
           ),
+          if (dia.montoCobradoEfectivoCentavos > 0 ||
+              dia.montoCobradoYapeCentavos > 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: MetricCard(
+                    label: 'Cobrado Efectivo',
+                    value: formatSolesFromCentavos(
+                        dia.montoCobradoEfectivoCentavos),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: MetricCard(
+                    label: 'Cobrado Yape',
+                    value:
+                        formatSolesFromCentavos(dia.montoCobradoYapeCentavos),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,

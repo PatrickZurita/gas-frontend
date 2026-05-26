@@ -7,6 +7,7 @@ import '../../../shared/message_box.dart';
 import '../../../shared/metric_line.dart';
 import '../../../shared/status_badge.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/models/pedido.dart';
 import '../../pedidos/pedido_service.dart';
 import '../../pedidos/screens/detalle_pedido_screen.dart';
 import '../models/pedido_reporte.dart';
@@ -260,26 +261,192 @@ class _TotalsFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final efectivo = reporte.montoCobradoEfectivoCentavos;
+    final yape = reporte.montoCobradoYapeCentavos;
+    final mostrarBreakdown = efectivo > 0 || yape > 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SummaryCard(
+          borderRadius: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MetricLine(
+                label: 'Total vendido',
+                value: formatSolesFromCentavos(reporte.montoTotalCentavos),
+                strong: true,
+              ),
+              MetricLine(
+                label: 'Pagado',
+                value: formatSolesFromCentavos(reporte.montoPagadoCentavos),
+              ),
+              MetricLine(
+                label: 'Pendiente',
+                value:
+                    formatSolesFromCentavos(reporte.montoPendienteCentavos),
+              ),
+              MetricLine(label: 'Pedidos', value: '${reporte.pedidosCount}'),
+              MetricLine(label: 'Balones', value: '${reporte.balonesVendidos}'),
+            ],
+          ),
+        ),
+        if (mostrarBreakdown) ...[
+          const SizedBox(height: 12),
+          _CobrosPorMetodoFrame(
+            efectivoCentavos: efectivo,
+            yapeCentavos: yape,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CobrosPorMetodoFrame extends StatelessWidget {
+  const _CobrosPorMetodoFrame({
+    required this.efectivoCentavos,
+    required this.yapeCentavos,
+  });
+
+  final int efectivoCentavos;
+  final int yapeCentavos;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return SummaryCard(
       borderRadius: 8,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Cobrado por metodo',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Para cuadrar caja y Yape al cierre del dia.',
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MetodoMetricCard(
+                  label: 'Efectivo',
+                  icono: Icons.payments_outlined,
+                  centavos: efectivoCentavos,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetodoMetricCard(
+                  label: 'Yape',
+                  icono: Icons.phone_iphone,
+                  centavos: yapeCentavos,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetodoMetricCard extends StatelessWidget {
+  const _MetodoMetricCard({
+    required this.label,
+    required this.icono,
+    required this.centavos,
+  });
+
+  final String label;
+  final IconData icono;
+  final int centavos;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          MetricLine(
-            label: 'Total vendido',
-            value: formatSolesFromCentavos(reporte.montoTotalCentavos),
-            strong: true,
+          Row(
+            children: [
+              Icon(icono, size: 20, color: colors.primary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: colors.primary,
+                ),
+              ),
+            ],
           ),
-          MetricLine(
-            label: 'Pagado',
-            value: formatSolesFromCentavos(reporte.montoPagadoCentavos),
+          const SizedBox(height: 6),
+          Text(
+            formatSolesFromCentavos(centavos),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              height: 1.0,
+            ),
           ),
-          MetricLine(
-            label: 'Pendiente',
-            value: formatSolesFromCentavos(reporte.montoPendienteCentavos),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetodoPagoChip extends StatelessWidget {
+  const _MetodoPagoChip({required this.metodo});
+
+  final MetodoPago metodo;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final esYape = metodo == MetodoPago.yape;
+    final icono = esYape ? Icons.phone_iphone : Icons.payments_outlined;
+    final label = metodoPagoLabel(metodo);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.secondary.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icono, size: 16, color: colors.onSecondaryContainer),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: colors.onSecondaryContainer,
+            ),
           ),
-          MetricLine(label: 'Pedidos', value: '${reporte.pedidosCount}'),
-          MetricLine(label: 'Balones', value: '${reporte.balonesVendidos}'),
         ],
       ),
     );
@@ -394,9 +561,20 @@ class _PedidoDiaRow extends StatelessWidget {
             ),
           )
         else
-          StatusBadge(
-            label: pedido.pagado ? 'Pagado' : 'Debe',
-            type: pedido.pagado ? StatusBadgeType.paid : StatusBadgeType.debt,
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusBadge(
+                label: pedido.pagado ? 'Pagado' : 'Debe',
+                type: pedido.pagado
+                    ? StatusBadgeType.paid
+                    : StatusBadgeType.debt,
+              ),
+              if (pedido.pagado && pedido.metodoPago != null)
+                _MetodoPagoChip(metodo: pedido.metodoPago!),
+            ],
           ),
       ],
     );

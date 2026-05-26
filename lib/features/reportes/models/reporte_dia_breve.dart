@@ -8,6 +8,8 @@ class ReporteDiaBreve {
     required this.montoTotalCentavos,
     required this.montoCobradoCentavos,
     required this.montoPendienteCentavos,
+    this.montoCobradoEfectivoCentavos = 0,
+    this.montoCobradoYapeCentavos = 0,
   });
 
   final DateTime fecha;
@@ -18,6 +20,8 @@ class ReporteDiaBreve {
   final int montoTotalCentavos;
   final int montoCobradoCentavos;
   final int montoPendienteCentavos;
+  final int montoCobradoEfectivoCentavos;
+  final int montoCobradoYapeCentavos;
 
   factory ReporteDiaBreve.fromJson(Map<String, Object?> json) {
     final balones10 = json['balones_10kg'] as int? ?? 0;
@@ -31,6 +35,9 @@ class ReporteDiaBreve {
       montoTotalCentavos: json['vendido_centavos'] as int? ?? 0,
       montoCobradoCentavos: json['cobrado_centavos'] as int? ?? 0,
       montoPendienteCentavos: json['pendiente_centavos'] as int? ?? 0,
+      montoCobradoEfectivoCentavos:
+          json['cobrado_efectivo_centavos'] as int? ?? 0,
+      montoCobradoYapeCentavos: json['cobrado_yape_centavos'] as int? ?? 0,
     );
   }
 }

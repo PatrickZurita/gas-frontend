@@ -12,6 +12,8 @@ class ReporteSemanal {
     required this.montoCobradoCentavos,
     required this.montoPendienteCentavos,
     required this.dias,
+    this.montoCobradoEfectivoCentavos = 0,
+    this.montoCobradoYapeCentavos = 0,
   });
 
   final DateTime desde;
@@ -23,6 +25,8 @@ class ReporteSemanal {
   final int montoTotalCentavos;
   final int montoCobradoCentavos;
   final int montoPendienteCentavos;
+  final int montoCobradoEfectivoCentavos;
+  final int montoCobradoYapeCentavos;
   final List<ReporteDiaBreve> dias;
 
   bool get isEmpty => pedidosCount == 0 && dias.isEmpty;
@@ -41,6 +45,10 @@ class ReporteSemanal {
       montoTotalCentavos: json['total_vendido_centavos'] as int? ?? 0,
       montoCobradoCentavos: json['total_cobrado_centavos'] as int? ?? 0,
       montoPendienteCentavos: json['total_pendiente_centavos'] as int? ?? 0,
+      montoCobradoEfectivoCentavos:
+          json['total_cobrado_efectivo_centavos'] as int? ?? 0,
+      montoCobradoYapeCentavos:
+          json['total_cobrado_yape_centavos'] as int? ?? 0,
       dias:
           diasJson
               .map(

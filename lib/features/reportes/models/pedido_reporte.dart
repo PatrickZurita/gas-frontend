@@ -17,6 +17,7 @@ class PedidoReporte {
     required this.createdAt,
     this.pesoBalonKg = 10,
     this.estado = PedidoEstado.activo,
+    this.metodoPago,
   });
 
   final String id;
@@ -33,6 +34,7 @@ class PedidoReporte {
   final DateTime createdAt;
   final int pesoBalonKg;
   final PedidoEstado estado;
+  final MetodoPago? metodoPago;
 
   bool get esAnulado => estado == PedidoEstado.anulado;
 
@@ -56,6 +58,7 @@ class PedidoReporte {
       montoPendienteCentavos: montoPendienteCentavos,
       pesoBalonKg: pesoBalonKg,
       estado: estado,
+      metodoPago: metodoPago,
     );
   }
 
@@ -75,6 +78,7 @@ class PedidoReporte {
       createdAt: DateTime.parse(json['created_at'] as String),
       pesoBalonKg: json['peso_balon_kg'] as int? ?? 10,
       estado: parsePedidoEstado(json['estado']),
+      metodoPago: parseMetodoPago(json['metodo_pago']),
     );
   }
 }

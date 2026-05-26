@@ -4,6 +4,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../shared/loading_card.dart';
 import '../../../shared/message_box.dart';
 import '../../../shared/summary_card.dart';
+import '../../pedidos/models/pedido.dart';
 import '../../pedidos/models/pedido_update_request.dart';
 import '../../pedidos/pedido_service.dart';
 import '../models/deudas_resumen.dart';
@@ -51,19 +52,20 @@ class _DeudasScreenState extends State<DeudasScreen> {
   }
 
   Future<void> _marcarComoCobrado(PedidoReporte pedido) async {
-    final confirmado = await showDialog<bool>(
+    final metodo = await showDialog<MetodoPago>(
       context: context,
       builder: (_) => _ConfirmarCobroDialog(pedido: pedido),
     );
-    if (confirmado != true || !mounted) return;
+    if (metodo == null || !mounted) return;
 
     setState(() => _processing.add(pedido.id));
     try {
       await widget.pedidoService.editarPedido(
         pedido.id,
-        const PedidoUpdateRequest(
+        PedidoUpdateRequest(
           pagado: true,
           montoPendienteCentavos: 0,
+          metodoPago: metodo,
         ),
       );
       if (!mounted) return;
@@ -304,10 +306,17 @@ class _DeudaCard extends StatelessWidget {
   }
 }
 
-class _ConfirmarCobroDialog extends StatelessWidget {
+class _ConfirmarCobroDialog extends StatefulWidget {
   const _ConfirmarCobroDialog({required this.pedido});
 
   final PedidoReporte pedido;
+
+  @override
+  State<_ConfirmarCobroDialog> createState() => _ConfirmarCobroDialogState();
+}
+
+class _ConfirmarCobroDialogState extends State<_ConfirmarCobroDialog> {
+  MetodoPago _metodo = MetodoPago.efectivo;
 
   @override
   Widget build(BuildContext context) {
@@ -318,23 +327,54 @@ class _ConfirmarCobroDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            pedido.clienteAlias,
+            widget.pedido.clienteAlias,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            'Pago ${formatSolesFromCentavos(pedido.montoPendienteCentavos)}?',
+            'Pago ${formatSolesFromCentavos(widget.pedido.montoPendienteCentavos)}?',
             style: const TextStyle(fontSize: 17),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Como pago',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<MetodoPago>(
+            segments: const [
+              ButtonSegment<MetodoPago>(
+                value: MetodoPago.efectivo,
+                label: Text('Efectivo'),
+                icon: Icon(Icons.payments_outlined),
+              ),
+              ButtonSegment<MetodoPago>(
+                value: MetodoPago.yape,
+                label: Text('Yape'),
+                icon: Icon(Icons.phone_iphone),
+              ),
+            ],
+            selected: {_metodo},
+            onSelectionChanged: (selection) {
+              setState(() {
+                _metodo = selection.first;
+              });
+            },
+            style: ButtonStyle(
+              minimumSize: WidgetStateProperty.all(const Size.fromHeight(54)),
+              textStyle:
+                  WidgetStateProperty.all(const TextStyle(fontSize: 17)),
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () => Navigator.of(context).pop(_metodo),
           child: const Text('Si, cobrado'),
         ),
       ],
