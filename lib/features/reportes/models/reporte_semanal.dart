@@ -12,6 +12,8 @@ class ReporteSemanal {
     required this.montoCobradoCentavos,
     required this.montoPendienteCentavos,
     required this.dias,
+    this.compras10kg = 0,
+    this.compras45kg = 0,
     this.montoCobradoEfectivoCentavos = 0,
     this.montoCobradoYapeCentavos = 0,
   });
@@ -25,6 +27,8 @@ class ReporteSemanal {
   final int montoTotalCentavos;
   final int montoCobradoCentavos;
   final int montoPendienteCentavos;
+  final int compras10kg;
+  final int compras45kg;
   final int montoCobradoEfectivoCentavos;
   final int montoCobradoYapeCentavos;
   final List<ReporteDiaBreve> dias;
@@ -45,6 +49,8 @@ class ReporteSemanal {
       montoTotalCentavos: json['total_vendido_centavos'] as int? ?? 0,
       montoCobradoCentavos: json['total_cobrado_centavos'] as int? ?? 0,
       montoPendienteCentavos: json['total_pendiente_centavos'] as int? ?? 0,
+      compras10kg: json['total_compras_10kg'] as int? ?? 0,
+      compras45kg: json['total_compras_45kg'] as int? ?? 0,
       montoCobradoEfectivoCentavos:
           json['total_cobrado_efectivo_centavos'] as int? ?? 0,
       montoCobradoYapeCentavos:

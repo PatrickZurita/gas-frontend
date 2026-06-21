@@ -8,6 +8,7 @@ class StockDia extends StockResumen {
     required super.stockIniciado,
     required super.stockInicial,
     required super.entradas,
+    super.compras,
     required super.salidas,
     required super.ajustes,
     required super.stockActual,
@@ -27,14 +28,13 @@ class StockDia extends StockResumen {
       stockIniciado: json['stock_iniciado'] as bool,
       stockInicial: json['stock_inicial'] as int?,
       entradas: json['entradas'] as int? ?? 0,
+      compras: json['compras'] as int? ?? json['entradas'] as int? ?? 0,
       salidas: json['salidas'] as int? ?? 0,
       ajustes: json['ajustes'] as int? ?? 0,
       stockActual: json['stock_actual'] as int?,
       stockFinalFisico: json['stock_final_fisico'] as int?,
       cerrado: json['cerrado'] as bool? ?? false,
-      porPeso: StockPorPeso.fromJson(
-        json['por_peso'] as Map<String, Object?>?,
-      ),
+      porPeso: StockPorPeso.fromJson(json['por_peso'] as Map<String, Object?>?),
       movimientos:
           movimientosJson
               .map(

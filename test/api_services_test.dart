@@ -97,8 +97,11 @@ void main() {
         ),
       );
 
-      final clientes =
-          await service.listarClientes(query: 'las', limit: 50, offset: 10);
+      final clientes = await service.listarClientes(
+        query: 'las',
+        limit: 50,
+        offset: 10,
+      );
 
       expect(capturedRequest.method, 'GET');
       expect(capturedRequest.url.path, '/clientes');
@@ -424,10 +427,26 @@ void main() {
                 'total_pedidos': 12,
                 'balones_10kg': 12,
                 'balones_45kg': 2,
+                'total_compras_10kg': 5,
+                'total_compras_45kg': 1,
                 'total_vendido_centavos': 81000,
                 'total_cobrado_centavos': 76000,
                 'total_pendiente_centavos': 5000,
-                'dias': <Map<String, Object?>>[],
+                'dias': <Map<String, Object?>>[
+                  {
+                    'fecha': '2026-05-18',
+                    'pedidos_count': 2,
+                    'balones_10kg': 2,
+                    'balones_45kg': 0,
+                    'compras_10kg': 5,
+                    'compras_45kg': 1,
+                    'stock_final_10kg': 30,
+                    'stock_final_45kg': 2,
+                    'vendido_centavos': 11000,
+                    'cobrado_centavos': 11000,
+                    'pendiente_centavos': 0,
+                  },
+                ],
               }),
               200,
               headers: {'content-type': 'application/json'},
@@ -436,8 +455,7 @@ void main() {
         ),
       );
 
-      final reporte =
-          await service.obtenerReporteSemana(DateTime(2026, 5, 18));
+      final reporte = await service.obtenerReporteSemana(DateTime(2026, 5, 18));
 
       expect(capturedRequest.method, 'GET');
       expect(capturedRequest.url.path, '/reportes/semana');
@@ -446,6 +464,12 @@ void main() {
       expect(reporte.balonesVendidos10kg, 12);
       expect(reporte.balonesVendidos45kg, 2);
       expect(reporte.balonesVendidos, 14);
+      expect(reporte.compras10kg, 5);
+      expect(reporte.compras45kg, 1);
+      expect(reporte.dias.single.compras10kg, 5);
+      expect(reporte.dias.single.compras45kg, 1);
+      expect(reporte.dias.single.stockFinal10kg, 30);
+      expect(reporte.dias.single.stockFinal45kg, 2);
       expect(reporte.montoTotalCentavos, 81000);
       expect(reporte.montoCobradoCentavos, 76000);
       expect(reporte.montoPendienteCentavos, 5000);

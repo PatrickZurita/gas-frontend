@@ -10,7 +10,7 @@
 ## Estado y plan (vigente 2026-05-22)
 - Backend activo: PostgreSQL (Fly+Neon). AWS/DynamoDB en standby; el frontend no debe asumir AWS.
 - Plan V2/V3/V4: [../docs/roadmap/V2_V3_FEATURE_ROADMAP.md](../docs/roadmap/V2_V3_FEATURE_ROADMAP.md), orden en [../docs/roadmap/IMPLEMENTATION_ORDER.md](../docs/roadmap/IMPLEMENTATION_ORDER.md).
-- **V2 frontend** (fase 7+): consumir contratos de `estado`/anulación/edición/peso 10/45; refrescar Home tras crear/editar/anular; **no calcular stock crítico localmente** (lo resuelve el backend). UX en [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md).
+- **V2 frontend** (fase 7+): consumir contratos de `estado`/anulación/edición/peso 10/45; mostrar stock inicial, compras, ventas, ajustes y disponible sin mezclarlos; refrescar Home tras crear/editar/anular/compras; **no calcular stock crítico localmente** (lo resuelve el backend). UX en [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md).
 - **V3**: historial por fecha (`GET /reportes/dia?fecha=`). **V4**: reportería semana/mes + tablet responsive ([../docs/roadmap/V4_REPORTING_TABLET_ROADMAP.md](../docs/roadmap/V4_REPORTING_TABLET_ROADMAP.md)).
 - Skills: `flutter-expert` (instalado en `.claude/skills/`) para Flutter/Dart genérico; [gas-flutter-tablet-ux](../docs/codex-skills/gas-flutter-tablet-ux/SKILL.md) y [gas-flutter-adult-first-ux](../docs/codex-skills/gas-flutter-adult-first-ux/SKILL.md) para reglas de dominio.
 - Reparto modelos: Codex GPT-5.5 implementa; Opus 4.7 audita UX adulto-first y tablet. [../docs/roadmap/MODEL_USAGE_STRATEGY.md](../docs/roadmap/MODEL_USAGE_STRATEGY.md).
@@ -122,6 +122,16 @@
 - Debe permitir precio con enteros o dos decimales en UI, pero convertir a centavos para contratos nuevos.
 - No debe implementar stock por marca/tipo, motor de precios, dashboard avanzado, auth compleja ni AWS.
 
+### I.1) Flutter Stock / Provider Purchases Agent
+- Responsable de Home y flujo UI para stock por peso, stock inicial y compras a proveedor.
+- Skill recomendada: [gas-flutter-stock](../docs/codex-skills/gas-flutter-stock/SKILL.md).
+- Debe consumir contratos documentados por backend; no inventar endpoints ni campos finales.
+- Debe mostrar claramente que `Inicio` no es `Compras`.
+- Debe preferir labels como `Compras hoy` o `Compras a proveedor` cuando `Entradas` pueda confundir.
+- Debe mantener 10 kg y 45 kg separados en UI, modelos y tests.
+- Debe refrescar Home despues de iniciar dia, registrar compra/entrada, ajustar stock, crear/editar/anular pedido y reanudar app.
+- No debe corregir el bug con aritmetica local si el backend devuelve conceptos mezclados.
+
 ### J) Flutter Pedido V2 Agent (anulación / edición / peso)
 - Responsable futuro de consumir los contratos V2 de pedido sobre PostgreSQL.
 - Debe consumir solo:
@@ -175,6 +185,23 @@
 - Ver historial por cliente.
 - Ver resumen simple del dia cuando se integre reportes.
 - Ver stock de hoy e iniciar stock del dia cuando se integre stock.
+
+## Caso activo: `GAS_stock_compras_proveedores_bug_plan.md`
+
+Para analizar el bug `Entradas: 2` y compras a proveedores desde Flutter:
+
+- Cargar `gas-flutter-stock` para Home, modelos, servicios y tests de stock.
+- Cargar `gas-flutter-adult-first-ux` para decidir copy y densidad visual.
+- Cargar `gas-flutter-reports` si la tarea incluye reporte diario/semanal.
+- Cargar `gas-qa-regression-stock-reports` para smoke Android y tests Flutter.
+
+Preguntas obligatorias del analisis frontend:
+
+- Si Home recibe datos separados por peso o los agrupa visualmente.
+- Si `Inicio`, `Entradas`, `Vendidos hoy` y `Disponibles` vienen del backend o se derivan localmente.
+- Si `Entradas` debe renombrarse a `Compras hoy` o `Compras a proveedor`.
+- Si se puede mostrar `Inicio 10 kg / Inicio 45 kg` y `Compras 10 kg / Compras 45 kg` sin romper el diseno actual.
+- Si el flujo adulto-first sigue priorizando `Registrar pedido`.
 
 ## Cosas prohibidas por ahora
 - Login.

@@ -318,6 +318,84 @@ void main() {
       expect(stock.stockInicial, 30);
       expect(stock.stockActual, 35);
       expect(stock.ajustes, -1);
+      expect(stock.compras, 10);
+    });
+
+    test('parses stock summary inicio and compras by weight', () {
+      final stock = StockResumen.fromJson({
+        'fecha': '2026-06-21',
+        'stock_iniciado': true,
+        'stock_inicial': 34,
+        'compras': 0,
+        'entradas': 0,
+        'salidas': 0,
+        'ajustes': 0,
+        'stock_actual': 34,
+        'stock_final_fisico': null,
+        'cerrado': false,
+        'por_peso': {
+          '10kg': {
+            'inicio': 32,
+            'compras': 0,
+            'salidas': 0,
+            'reversas': 0,
+            'ajustes': 0,
+            'stock_disponible': 32,
+          },
+          '45kg': {
+            'inicio': 2,
+            'compras': 0,
+            'salidas': 0,
+            'reversas': 0,
+            'ajustes': 0,
+            'stock_disponible': 2,
+          },
+        },
+      });
+
+      expect(stock.compras, 0);
+      expect(stock.porPeso?.inicio10kg, 32);
+      expect(stock.porPeso?.inicio45kg, 2);
+      expect(stock.porPeso?.compras10kg, 0);
+      expect(stock.porPeso?.compras45kg, 0);
+      expect(stock.porPeso?.stockActual10kg, 32);
+      expect(stock.porPeso?.stockActual45kg, 2);
+    });
+
+    test('falls back to legacy entradas when compras is missing', () {
+      final stock = StockResumen.fromJson({
+        'fecha': '2026-06-21',
+        'stock_iniciado': true,
+        'stock_inicial': 30,
+        'entradas': 3,
+        'salidas': 1,
+        'ajustes': 0,
+        'stock_actual': 32,
+        'stock_final_fisico': null,
+        'cerrado': false,
+        'por_peso': {
+          '10kg': {
+            'entradas': 2,
+            'salidas': 1,
+            'reversas': 0,
+            'ajustes': 0,
+            'stock_disponible': 31,
+          },
+          '45kg': {
+            'entradas': 1,
+            'salidas': 0,
+            'reversas': 0,
+            'ajustes': 0,
+            'stock_disponible': 1,
+          },
+        },
+      });
+
+      expect(stock.compras, 3);
+      expect(stock.porPeso?.inicio10kg, isNull);
+      expect(stock.porPeso?.inicio45kg, isNull);
+      expect(stock.porPeso?.compras10kg, 2);
+      expect(stock.porPeso?.compras45kg, 1);
     });
 
     test('parses stock summary not started', () {

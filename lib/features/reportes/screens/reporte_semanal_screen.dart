@@ -64,12 +64,13 @@ class _ReporteSemanalScreenState extends State<ReporteSemanalScreen> {
   Future<void> _abrirDia(DateTime fecha) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PedidosDiaScreen(
-          reportesService: widget.reportesService,
-          pedidoService: widget.pedidoService,
-          fecha: fecha,
-          onCambioPedido: widget.onCambioPedido,
-        ),
+        builder:
+            (_) => PedidosDiaScreen(
+              reportesService: widget.reportesService,
+              pedidoService: widget.pedidoService,
+              fecha: fecha,
+              onCambioPedido: widget.onCambioPedido,
+            ),
       ),
     );
     if (!mounted) return;
@@ -138,10 +139,7 @@ class _ReporteSemanalScreenState extends State<ReporteSemanalScreen> {
                       const SizedBox(height: 12),
                       _ResumenSemanaMobile(reporte: reporte),
                       const SizedBox(height: 16),
-                      _DiasList(
-                        dias: reporte.dias,
-                        onAbrirDia: _abrirDia,
-                      ),
+                      _DiasList(dias: reporte.dias, onAbrirDia: _abrirDia),
                     ],
                   );
                 },
@@ -249,8 +247,9 @@ class _ResumenSemanaMobile extends StatelessWidget {
               Expanded(
                 child: MetricCard(
                   label: 'Pendiente',
-                  value:
-                      formatSolesFromCentavos(reporte.montoPendienteCentavos),
+                  value: formatSolesFromCentavos(
+                    reporte.montoPendienteCentavos,
+                  ),
                 ),
               ),
             ],
@@ -282,7 +281,8 @@ class _ResumenSemanaMobile extends StatelessWidget {
                   child: MetricCard(
                     label: 'Cobrado Efectivo',
                     value: formatSolesFromCentavos(
-                        reporte.montoCobradoEfectivoCentavos),
+                      reporte.montoCobradoEfectivoCentavos,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -290,7 +290,8 @@ class _ResumenSemanaMobile extends StatelessWidget {
                   child: MetricCard(
                     label: 'Cobrado Yape',
                     value: formatSolesFromCentavos(
-                        reporte.montoCobradoYapeCentavos),
+                      reporte.montoCobradoYapeCentavos,
+                    ),
                   ),
                 ),
               ],
@@ -303,6 +304,16 @@ class _ResumenSemanaMobile extends StatelessWidget {
             children: [
               DataChip(label: 'Pedidos', value: '${reporte.pedidosCount}'),
               DataChip(label: 'Balones', value: '${reporte.balonesVendidos}'),
+              if (reporte.compras10kg > 0)
+                DataChip(
+                  label: 'Compras 10 kg',
+                  value: '${reporte.compras10kg}',
+                ),
+              if (reporte.compras45kg > 0)
+                DataChip(
+                  label: 'Compras 45 kg',
+                  value: '${reporte.compras45kg}',
+                ),
             ],
           ),
         ],
@@ -330,9 +341,10 @@ class _DiasList extends StatelessWidget {
           for (var i = 0; i < dias.length; i++) ...[
             DiaBreveTile(
               dia: dias[i],
-              onTap: onAbrirDia == null || dias[i].pedidosCount == 0
-                  ? null
-                  : () => onAbrirDia!(dias[i].fecha),
+              onTap:
+                  onAbrirDia == null || dias[i].pedidosCount == 0
+                      ? null
+                      : () => onAbrirDia!(dias[i].fecha),
             ),
             if (i < dias.length - 1)
               Divider(

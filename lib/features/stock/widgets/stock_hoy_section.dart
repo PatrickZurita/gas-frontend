@@ -118,13 +118,14 @@ class StockHoySectionState extends State<StockHoySection> {
   Future<void> _registrarEntrada() async {
     final resultado = await showDialog<_StockPesoCantidadResult>(
       context: context,
-      builder: (_) => const _StockPesoCantidadDialog(
-        title: 'Agregar balones',
-        description: 'Usa esto cuando llegaron balones al deposito.',
-        confirmLabel: 'Guardar entrada',
-        icon: Icons.add_circle_outline,
-        initialValue: 1,
-      ),
+      builder:
+          (_) => const _StockPesoCantidadDialog(
+            title: 'Agregar compra',
+            description: 'Usa esto cuando llegaron balones al deposito.',
+            confirmLabel: 'Guardar compra',
+            icon: Icons.add_circle_outline,
+            initialValue: 1,
+          ),
     );
     if (resultado == null) {
       return;
@@ -138,7 +139,7 @@ class StockHoySectionState extends State<StockHoySection> {
           pesoBalonKg: resultado.pesoKg,
         ),
       ),
-      successMessage: 'Entrada guardada (${resultado.pesoKg} kg)',
+      successMessage: 'Compra guardada (${resultado.pesoKg} kg)',
     );
   }
 
@@ -149,16 +150,17 @@ class StockHoySectionState extends State<StockHoySection> {
 
     final resultado = await showDialog<_StockPesoCantidadResult>(
       context: context,
-      builder: (_) => _StockPesoCantidadDialog(
-        title: 'Actualizar stock actual',
-        description:
-            'Cuenta los balones del peso que vas a actualizar y registra el total.',
-        confirmLabel: 'Actualizar stock',
-        icon: Icons.fact_check_outlined,
-        initialValue: stock10,
-        allowZero: true,
-        initialValueFor45kg: stock45,
-      ),
+      builder:
+          (_) => _StockPesoCantidadDialog(
+            title: 'Actualizar stock actual',
+            description:
+                'Cuenta los balones del peso que vas a actualizar y registra el total.',
+            confirmLabel: 'Actualizar stock',
+            icon: Icons.fact_check_outlined,
+            initialValue: stock10,
+            allowZero: true,
+            initialValueFor45kg: stock45,
+          ),
     );
     if (resultado == null) {
       return;
@@ -360,6 +362,8 @@ class _StockContent extends StatelessWidget {
     final porPeso = stock.porPeso;
     final stock10 = porPeso?.stockActual10kg ?? stock.stockActual ?? 0;
     final stock45 = porPeso?.stockActual45kg ?? 0;
+    final inicioValue = _formatInicio(stock);
+    final comprasValue = _formatCompras(stock);
 
     return SummaryCard(
       child: Column(
@@ -404,9 +408,9 @@ class _StockContent extends StatelessWidget {
             runSpacing: 8,
             children: [
               DataChip(label: 'Vendidos hoy', value: '${stock.salidas}'),
-              DataChip(label: 'Inicio', value: '${stock.stockInicial ?? 0}'),
-              if (stock.entradas > 0)
-                DataChip(label: 'Entradas', value: '${stock.entradas}'),
+              DataChip(label: 'Inicio', value: inicioValue),
+              if (_comprasTotal(stock) > 0)
+                DataChip(label: 'Compras hoy', value: comprasValue),
               if (stock.ajustes != 0)
                 DataChip(
                   label: 'Ajuste manual',
@@ -433,7 +437,7 @@ class _StockContent extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onRegistrarEntrada,
               icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Agregar entrada'),
+              label: const Text('Agregar compra'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
                 textStyle: const TextStyle(fontSize: 17),
@@ -450,6 +454,36 @@ class _StockContent extends StatelessWidget {
       return '+$ajustes';
     }
     return '$ajustes';
+  }
+
+  String _formatInicio(StockResumen stock) {
+    final porPeso = stock.porPeso;
+    final inicio10 = porPeso?.inicio10kg;
+    final inicio45 = porPeso?.inicio45kg;
+    if (inicio10 != null || inicio45 != null) {
+      return _formatPorPeso(inicio10 ?? 0, inicio45 ?? 0);
+    }
+    return '${stock.stockInicial ?? 0}';
+  }
+
+  String _formatCompras(StockResumen stock) {
+    final porPeso = stock.porPeso;
+    if (porPeso != null) {
+      return _formatPorPeso(porPeso.compras10kg, porPeso.compras45kg);
+    }
+    return '${stock.compras}';
+  }
+
+  int _comprasTotal(StockResumen stock) {
+    final porPeso = stock.porPeso;
+    if (porPeso != null) {
+      return porPeso.compras10kg + porPeso.compras45kg;
+    }
+    return stock.compras;
+  }
+
+  String _formatPorPeso(int diezKg, int cuarentaYCincoKg) {
+    return '10 kg $diezKg / 45 kg $cuarentaYCincoKg';
   }
 }
 
@@ -468,9 +502,10 @@ class _StockPesoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final sinStock = cantidad <= 0;
-    final bgColor = sinStock
-        ? colors.errorContainer.withValues(alpha: 0.45)
-        : colors.primaryContainer.withValues(alpha: 0.55);
+    final bgColor =
+        sinStock
+            ? colors.errorContainer.withValues(alpha: 0.45)
+            : colors.primaryContainer.withValues(alpha: 0.55);
     final borderColor = sinStock ? colors.error : colors.primary;
     final cantidadColor = sinStock ? colors.error : colors.onSurface;
 
@@ -479,7 +514,10 @@ class _StockPesoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor.withValues(alpha: 0.4), width: 1.2),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,7 +562,10 @@ class _StockPesoCard extends StatelessWidget {
 }
 
 class _ContinuarDeAyerCard extends StatelessWidget {
-  const _ContinuarDeAyerCard({required this.preview, required this.onContinuar});
+  const _ContinuarDeAyerCard({
+    required this.preview,
+    required this.onContinuar,
+  });
 
   final StockContinuarPreview preview;
   final VoidCallback onContinuar;
@@ -533,9 +574,8 @@ class _ContinuarDeAyerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final fechaOrigen = preview.fechaOrigen;
-    final etiquetaFecha = fechaOrigen == null
-        ? 'dia anterior'
-        : _formatFecha(fechaOrigen);
+    final etiquetaFecha =
+        fechaOrigen == null ? 'dia anterior' : _formatFecha(fechaOrigen);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -588,7 +628,10 @@ class _ContinuarDeAyerCard extends StatelessWidget {
             label: const Text('Continuar con este stock'),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(60),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -660,7 +703,10 @@ class _PesoChipGrande extends StatelessWidget {
 }
 
 class _StockPesoCantidadResult {
-  const _StockPesoCantidadResult({required this.pesoKg, required this.cantidad});
+  const _StockPesoCantidadResult({
+    required this.pesoKg,
+    required this.cantidad,
+  });
 
   final int pesoKg;
   final int cantidad;
@@ -731,16 +777,17 @@ class _StockPesoCantidadDialogState extends State<_StockPesoCantidadDialog> {
         cantidad != null && (widget.allowZero ? cantidad >= 0 : cantidad > 0);
     if (!isValid) {
       setState(() {
-        _error = widget.allowZero
-            ? 'Ingresa 0 o mas balones.'
-            : 'Ingresa una cantidad mayor a 0.';
+        _error =
+            widget.allowZero
+                ? 'Ingresa 0 o mas balones.'
+                : 'Ingresa una cantidad mayor a 0.';
       });
       return;
     }
 
-    Navigator.of(context).pop(
-      _StockPesoCantidadResult(pesoKg: _pesoKg, cantidad: cantidad),
-    );
+    Navigator.of(
+      context,
+    ).pop(_StockPesoCantidadResult(pesoKg: _pesoKg, cantidad: cantidad));
   }
 
   @override
@@ -773,7 +820,8 @@ class _StockPesoCantidadDialogState extends State<_StockPesoCantidadDialog> {
                 ),
               ],
               selected: {_pesoKg},
-              onSelectionChanged: (selection) => _onPesoChanged(selection.first),
+              onSelectionChanged:
+                  (selection) => _onPesoChanged(selection.first),
               style: ButtonStyle(
                 minimumSize: WidgetStateProperty.all(const Size.fromHeight(54)),
                 textStyle: WidgetStateProperty.all(
@@ -911,4 +959,3 @@ class _StockNumberDialogState extends State<_StockNumberDialog> {
     );
   }
 }
-

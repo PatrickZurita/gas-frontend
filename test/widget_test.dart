@@ -23,6 +23,7 @@ import 'package:gas_frontend/features/stock/models/catalogo_item.dart';
 import 'package:gas_frontend/features/stock/models/stock_continuar_preview.dart';
 import 'package:gas_frontend/features/stock/models/stock_dia.dart';
 import 'package:gas_frontend/features/stock/models/stock_operacion.dart';
+import 'package:gas_frontend/features/stock/models/stock_por_peso.dart';
 import 'package:gas_frontend/features/stock/models/stock_requests.dart';
 import 'package:gas_frontend/features/stock/models/stock_resumen.dart';
 import 'package:gas_frontend/features/stock/services/stock_service.dart';
@@ -109,11 +110,12 @@ void main() {
     expect(find.text('Balones disponibles'), findsOneWidget);
     expect(find.text('29'), findsOneWidget);
     expect(find.text('Inicio'), findsOneWidget);
-    expect(find.text('30'), findsOneWidget);
+    expect(find.text('10 kg 30 / 45 kg 2'), findsOneWidget);
     expect(find.text('Vendidos hoy'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
+    expect(find.text('Entradas'), findsNothing);
     expect(find.text('Actualizar stock actual'), findsOneWidget);
-    expect(find.text('Agregar entrada'), findsOneWidget);
+    expect(find.text('Agregar compra'), findsOneWidget);
   });
 
   testWidgets('home shows manual stock adjustment with clear label', (
@@ -126,6 +128,35 @@ void main() {
     expect(find.text('Ajuste manual'), findsOneWidget);
     expect(find.text('+1'), findsOneWidget);
     expect(find.text('Ajustes'), findsNothing);
+  });
+
+  testWidgets('home labels provider purchases as compras hoy', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, stockService: _FakeStockService.withPurchases());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Balones disponibles'), 300);
+
+    expect(find.text('Compras hoy'), findsOneWidget);
+    expect(find.text('10 kg 4 / 45 kg 1'), findsOneWidget);
+    expect(find.text('Entradas'), findsNothing);
+  });
+
+  testWidgets('stock purchase dialog uses compra copy', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHome(tester, stockService: _FakeStockService.withData());
+    await tester.pumpAndSettle();
+    final compraButton = find.widgetWithText(OutlinedButton, 'Agregar compra');
+    await tester.scrollUntilVisible(compraButton, 500);
+    await tester.pumpAndSettle();
+
+    await tester.tap(compraButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agregar compra'), findsWidgets);
+    expect(find.text('Guardar compra'), findsOneWidget);
+    expect(find.text('Guardar entrada'), findsNothing);
   });
 
   testWidgets('home shows stock error state', (WidgetTester tester) async {
@@ -832,6 +863,16 @@ class _FakeStockService implements StockService {
         stockActual: 29,
         stockFinalFisico: null,
         cerrado: false,
+        porPeso: const StockPorPeso(
+          stockActual10kg: 29,
+          stockActual45kg: 2,
+          inicio10kg: 30,
+          inicio45kg: 2,
+          salidas10kg: 1,
+          salidas45kg: 0,
+          compras10kg: 0,
+          compras45kg: 0,
+        ),
       ),
       _error = null;
 
@@ -846,6 +887,33 @@ class _FakeStockService implements StockService {
         stockActual: 25,
         stockFinalFisico: null,
         cerrado: false,
+      ),
+      _error = null;
+
+  _FakeStockService.withPurchases()
+    : _stock = StockResumen(
+        fecha: DateTime.parse('2026-01-16'),
+        stockIniciado: true,
+        stockInicial: 30,
+        entradas: 5,
+        compras: 5,
+        salidas: 1,
+        ajustes: 0,
+        stockActual: 34,
+        stockFinalFisico: null,
+        cerrado: false,
+        porPeso: const StockPorPeso(
+          stockActual10kg: 31,
+          stockActual45kg: 3,
+          inicio10kg: 28,
+          inicio45kg: 2,
+          salidas10kg: 1,
+          salidas45kg: 0,
+          entradas10kg: 4,
+          entradas45kg: 1,
+          compras10kg: 4,
+          compras45kg: 1,
+        ),
       ),
       _error = null;
 
@@ -1136,8 +1204,7 @@ class _FakeReportesService implements ReportesService {
   @override
   Future<ReporteMensual> obtenerReporteMes(DateTime mes) async {
     return ReporteMensual(
-      mes:
-          '${mes.year}-${mes.month.toString().padLeft(2, '0')}',
+      mes: '${mes.year}-${mes.month.toString().padLeft(2, '0')}',
       pedidosCount: 0,
       balonesVendidos: 0,
       balonesVendidos10kg: 0,
