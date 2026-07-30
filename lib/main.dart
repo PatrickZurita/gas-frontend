@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/network/api_client.dart';
 import 'features/clientes/cliente_service.dart';
+import 'features/demanda_perdida/demanda_perdida_service.dart';
 import 'features/pedidos/pedido_service.dart';
 import 'features/reportes/services/reportes_service.dart';
 import 'features/stock/services/stock_service.dart';
@@ -22,6 +23,7 @@ class GasApp extends StatelessWidget {
     final pedidoService = ApiPedidoService(apiClient);
     final reportesService = ApiReportesService(apiClient);
     final stockService = ApiStockService(apiClient);
+    final demandaPerdidaService = ApiDemandaPerdidaService(apiClient);
 
     return MaterialApp(
       title: 'Pedidos de Gas',
@@ -32,6 +34,7 @@ class GasApp extends StatelessWidget {
         pedidoService: pedidoService,
         reportesService: reportesService,
         stockService: stockService,
+        demandaPerdidaService: demandaPerdidaService,
       ),
     );
   }

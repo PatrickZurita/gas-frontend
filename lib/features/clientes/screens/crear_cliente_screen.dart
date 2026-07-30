@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/action_button.dart';
+import '../../../shared/canal_captacion_selector.dart';
 import '../../../shared/message_box.dart';
 import '../cliente_service.dart';
 import '../models/cliente_create_request.dart';
@@ -22,6 +23,7 @@ class _CrearClienteScreenState extends State<CrearClienteScreen> {
   bool _isSaving = false;
   String? _message;
   bool _isSuccess = false;
+  String? _canalCaptacion;
 
   @override
   void dispose() {
@@ -58,7 +60,11 @@ class _CrearClienteScreenState extends State<CrearClienteScreen> {
 
     try {
       final cliente = await widget.clienteService.crearCliente(
-        ClienteCreateRequest(alias: alias, telefono: telefono),
+        ClienteCreateRequest(
+          alias: alias,
+          telefono: telefono,
+          canalCaptacion: _canalCaptacion,
+        ),
       );
       if (!mounted) {
         return;
@@ -141,6 +147,16 @@ class _CrearClienteScreenState extends State<CrearClienteScreen> {
                 prefixIcon: Icon(Icons.phone_outlined),
               ),
               onSubmitted: (_) => _guardarCliente(),
+            ),
+            const SizedBox(height: 16),
+            CanalCaptacionSelector(
+              value: _canalCaptacion,
+              enabled: !_isSaving,
+              onChanged: (canal) {
+                setState(() {
+                  _canalCaptacion = canal;
+                });
+              },
             ),
             const SizedBox(height: 16),
             if (_message != null)

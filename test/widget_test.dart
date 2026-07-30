@@ -9,6 +9,10 @@ import 'package:gas_frontend/features/clientes/models/cliente_reciente.dart';
 import 'package:gas_frontend/features/clientes/screens/buscar_cliente_screen.dart';
 import 'package:gas_frontend/features/clientes/screens/crear_cliente_screen.dart';
 import 'package:gas_frontend/features/clientes/screens/cliente_seleccionado_screen.dart';
+import 'package:gas_frontend/features/demanda_perdida/demanda_perdida_service.dart';
+import 'package:gas_frontend/features/demanda_perdida/models/demanda_perdida.dart';
+import 'package:gas_frontend/features/demanda_perdida/models/demanda_perdida_create_request.dart';
+import 'package:gas_frontend/features/demanda_perdida/widgets/demanda_perdida_sheet.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_create_request.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_update_request.dart';
@@ -38,6 +42,7 @@ void main() {
     expect(find.text('Clientes'), findsOneWidget);
     expect(find.text('Pedidos'), findsWidgets);
     expect(find.text('Reportes'), findsOneWidget);
+    expect(find.text('No atendido'), findsOneWidget);
     expect(find.text('Historial'), findsNothing);
     await tester.scrollUntilVisible(find.text('Stock de hoy'), 300);
     expect(find.text('Stock de hoy'), findsOneWidget);
@@ -452,6 +457,148 @@ void main() {
     );
   });
 
+  testWidgets('create client sends null canal when none selected', (
+    WidgetTester tester,
+  ) async {
+    final clienteService = _FakeClienteService.withResults();
+    await tester.pumpWidget(
+      MaterialApp(home: _CreatePushHost(service: clienteService)),
+    );
+
+    await tester.tap(find.text('abrir'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Como nos conocio (opcional)'), findsOneWidget);
+    expect(find.text('Volante'), findsOneWidget);
+    expect(find.text('Recomendacion'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Direccion / Alias'),
+      'Las Higueras 371',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Telefono'),
+      '999888777',
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar cliente'));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(clienteService.lastCreateRequest, isNotNull);
+    expect(clienteService.lastCreateRequest!.canalCaptacion, isNull);
+    expect(
+      clienteService.lastCreateRequest!.toJson().containsKey(
+        'canal_captacion',
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('create client sends selected canal uppercase', (
+    WidgetTester tester,
+  ) async {
+    final clienteService = _FakeClienteService.withResults();
+    await tester.pumpWidget(
+      MaterialApp(home: _CreatePushHost(service: clienteService)),
+    );
+
+    await tester.tap(find.text('abrir'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Direccion / Alias'),
+      'Las Higueras 371',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Telefono'),
+      '999888777',
+    );
+    await tester.tap(find.text('Volante'));
+    await tester.pump();
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar cliente'));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(clienteService.lastCreateRequest!.canalCaptacion, 'VOLANTE');
+  });
+
+  testWidgets('home registers no atendido with two taps and defaults', (
+    WidgetTester tester,
+  ) async {
+    final demandaService = _FakeDemandaPerdidaService();
+    await _pumpHome(tester, demandaPerdidaService: demandaService);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No atendido'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Llamada no atendida'), findsOneWidget);
+    expect(find.text('Sin stock'), findsOneWidget);
+    expect(find.text('Fuera de zona'), findsOneWidget);
+    expect(find.text('Saturado'), findsOneWidget);
+    expect(find.text('Otro'), findsOneWidget);
+
+    await tester.tap(find.text('Sin stock'));
+    await tester.pumpAndSettle();
+
+    expect(demandaService.createCalls, 1);
+    expect(demandaService.lastRequest!.motivo, 'SIN_STOCK');
+    expect(demandaService.lastRequest!.cantidadBalones, isNull);
+    expect(demandaService.lastRequest!.pesoBalonKg, isNull);
+    expect(demandaService.lastRequest!.zonaTexto, isNull);
+    expect(demandaService.lastRequest!.toJson(), {'motivo': 'SIN_STOCK'});
+    expect(find.text('Llamada no atendida guardada.'), findsOneWidget);
+  });
+
+  testWidgets('home sends touched optionals with the motivo', (
+    WidgetTester tester,
+  ) async {
+    final demandaService = _FakeDemandaPerdidaService();
+    await _pumpHome(tester, demandaPerdidaService: demandaService);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No atendido'));
+    await tester.pumpAndSettle();
+
+    final sheet = find.byType(DemandaPerdidaSheet);
+    await tester.tap(
+      find.descendant(of: sheet, matching: find.text('45 kg')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: sheet, matching: find.byIcon(Icons.add)),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Fuera de zona'));
+    await tester.pumpAndSettle();
+
+    expect(demandaService.lastRequest!.motivo, 'FUERA_DE_ZONA');
+    expect(demandaService.lastRequest!.pesoBalonKg, 45);
+    expect(demandaService.lastRequest!.cantidadBalones, 2);
+  });
+
+  testWidgets('home shows error snackbar when no atendido fails', (
+    WidgetTester tester,
+  ) async {
+    final demandaService = _FakeDemandaPerdidaService(
+      error: const ApiException(message: 'No se pudo conectar al servidor.'),
+    );
+    await _pumpHome(tester, demandaPerdidaService: demandaService);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No atendido'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Saturado'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo conectar al servidor.'), findsOneWidget);
+    expect(find.text('Llamada no atendida guardada.'), findsNothing);
+  });
+
   testWidgets('selected client opens order form and saves paid order', (
     WidgetTester tester,
   ) async {
@@ -614,6 +761,7 @@ Future<void> _pumpHome(
   WidgetTester tester, {
   ReportesService? reportesService,
   StockService? stockService,
+  DemandaPerdidaService? demandaPerdidaService,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -622,6 +770,8 @@ Future<void> _pumpHome(
         pedidoService: _FakePedidoService(),
         reportesService: reportesService ?? _FakeReportesService.empty(),
         stockService: stockService ?? _FakeStockService.notStarted(),
+        demandaPerdidaService:
+            demandaPerdidaService ?? _FakeDemandaPerdidaService(),
       ),
     ),
   );
@@ -659,6 +809,30 @@ class _CreateHost extends StatelessWidget {
   }
 }
 
+class _CreatePushHost extends StatelessWidget {
+  const _CreatePushHost({required this.service});
+
+  final ClienteService service;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<Cliente>(
+                builder: (_) => CrearClienteScreen(clienteService: service),
+              ),
+            );
+          },
+          child: const Text('abrir'),
+        ),
+      ),
+    );
+  }
+}
+
 class _FakeClienteService implements ClienteService {
   _FakeClienteService.withResults()
     : _clientes = const [
@@ -685,6 +859,7 @@ class _FakeClienteService implements ClienteService {
   final List<ClienteReciente> _recientes;
   int searchCalls = 0;
   String? lastQuery;
+  ClienteCreateRequest? lastCreateRequest;
 
   @override
   Future<List<Cliente>> buscarClientes(String query, {int limit = 10}) async {
@@ -695,6 +870,7 @@ class _FakeClienteService implements ClienteService {
 
   @override
   Future<Cliente> crearCliente(ClienteCreateRequest request) async {
+    lastCreateRequest = request;
     return Cliente(id: '2', alias: request.alias, telefono: request.telefono);
   }
 
@@ -727,6 +903,35 @@ class _FakeClienteService implements ClienteService {
               c.telefono.contains(q),
         )
         .toList();
+  }
+}
+
+class _FakeDemandaPerdidaService implements DemandaPerdidaService {
+  _FakeDemandaPerdidaService({this.error});
+
+  final ApiException? error;
+  DemandaPerdidaCreateRequest? lastRequest;
+  int createCalls = 0;
+
+  @override
+  Future<DemandaPerdida> registrarDemandaPerdida(
+    DemandaPerdidaCreateRequest request,
+  ) async {
+    createCalls++;
+    final currentError = error;
+    if (currentError != null) {
+      throw currentError;
+    }
+    lastRequest = request;
+    return DemandaPerdida(
+      id: '1',
+      fecha: DateTime.parse('2026-07-30'),
+      motivo: request.motivo,
+      zonaTexto: request.zonaTexto,
+      cantidadBalones: request.cantidadBalones ?? 1,
+      pesoBalonKg: request.pesoBalonKg ?? 10,
+      createdAt: DateTime.parse('2026-07-30T10:45:03.084894-05:00'),
+    );
   }
 }
 

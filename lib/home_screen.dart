@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'core/network/api_exception.dart';
 import 'features/clientes/cliente_service.dart';
 import 'features/clientes/screens/buscar_cliente_screen.dart';
 import 'features/clientes/screens/clientes_screen.dart';
+import 'features/demanda_perdida/demanda_perdida_service.dart';
+import 'features/demanda_perdida/widgets/demanda_perdida_sheet.dart';
 import 'features/pedidos/pedido_service.dart';
 import 'features/reportes/screens/pedidos_dia_screen.dart';
 import 'features/reportes/screens/reportes_screen.dart';
@@ -20,6 +23,7 @@ class HomeScreen extends StatefulWidget {
     required this.pedidoService,
     required this.reportesService,
     required this.stockService,
+    required this.demandaPerdidaService,
     super.key,
   });
 
@@ -27,6 +31,7 @@ class HomeScreen extends StatefulWidget {
   final PedidoService pedidoService;
   final ReportesService reportesService;
   final StockService stockService;
+  final DemandaPerdidaService demandaPerdidaService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -123,10 +128,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ],
               ),
               const SizedBox(height: 10),
-              _CompactHomeButton(
-                label: 'Reportes',
-                icon: Icons.insights_outlined,
-                onPressed: () => _openReportes(context),
+              Row(
+                children: [
+                  Expanded(
+                    child: _CompactHomeButton(
+                      label: 'Reportes',
+                      icon: Icons.insights_outlined,
+                      onPressed: () => _openReportes(context),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _CompactHomeButton(
+                      label: 'No atendido',
+                      icon: Icons.phone_missed_outlined,
+                      onPressed: _registrarNoAtendido,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               StockHoySection(
@@ -152,6 +171,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  Future<void> _registrarNoAtendido() async {
+    final request = await showDemandaPerdidaSheet(context);
+    if (request == null || !mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await widget.demandaPerdidaService.registrarDemandaPerdida(request);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Llamada no atendida guardada.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ApiException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo guardar. Intenta otra vez.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _openBuscarCliente(BuildContext context) async {

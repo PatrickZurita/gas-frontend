@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gas_frontend/core/network/api_client.dart';
 import 'package:gas_frontend/features/clientes/cliente_service.dart';
 import 'package:gas_frontend/features/clientes/models/cliente_create_request.dart';
+import 'package:gas_frontend/features/demanda_perdida/demanda_perdida_service.dart';
+import 'package:gas_frontend/features/demanda_perdida/models/demanda_perdida_create_request.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_create_request.dart';
 import 'package:gas_frontend/features/pedidos/models/pedido_update_request.dart';
 import 'package:gas_frontend/features/pedidos/pedido_service.dart';
@@ -47,6 +49,74 @@ void main() {
       expect(capturedRequest.url.path, '/clientes/');
       expect(capturedRequest.headers['content-type'], 'application/json');
       expect(cliente.direccion, 'Mandarinas 257');
+    });
+
+    test('omits canal_captacion from body when not selected', () async {
+      late http.Request capturedRequest;
+      final service = ApiClienteService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode({
+                'id': 4,
+                'alias': 'Mandarinas 257',
+                'telefono': '923777321',
+                'direccion': 'Mandarinas 257',
+                'canal_captacion': null,
+              }),
+              201,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      await service.crearCliente(
+        const ClienteCreateRequest(
+          alias: 'Mandarinas 257',
+          telefono: '923777321',
+        ),
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body.containsKey('canal_captacion'), isFalse);
+      expect(body, {'alias': 'Mandarinas 257', 'telefono': '923777321'});
+    });
+
+    test('sends canal_captacion uppercase when selected', () async {
+      late http.Request capturedRequest;
+      final service = ApiClienteService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode({
+                'id': 4,
+                'alias': 'Mandarinas 257',
+                'telefono': '923777321',
+                'direccion': 'Mandarinas 257',
+                'canal_captacion': 'VOLANTE',
+              }),
+              201,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      await service.crearCliente(
+        const ClienteCreateRequest(
+          alias: 'Mandarinas 257',
+          telefono: '923777321',
+          canalCaptacion: 'VOLANTE',
+        ),
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body['canal_captacion'], 'VOLANTE');
     });
 
     test('maps 409 duplicate client to domain exception', () async {
@@ -541,6 +611,80 @@ void main() {
     });
   });
 
+  group('DemandaPerdidaService', () {
+    test('posts minimal body with only motivo to /demanda-perdida', () async {
+      late http.Request capturedRequest;
+      final service = ApiDemandaPerdidaService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(_demandaPerdidaJson()),
+              201,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      final registro = await service.registrarDemandaPerdida(
+        const DemandaPerdidaCreateRequest(
+          motivo: DemandaPerdidaMotivo.sinStock,
+        ),
+      );
+
+      expect(capturedRequest.method, 'POST');
+      expect(capturedRequest.url.path, '/demanda-perdida');
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body, {'motivo': 'SIN_STOCK'});
+      expect(registro.motivo, 'SIN_STOCK');
+      expect(registro.cantidadBalones, 1);
+      expect(registro.pesoBalonKg, 10);
+    });
+
+    test('posts optional fields only when provided', () async {
+      late http.Request capturedRequest;
+      final service = ApiDemandaPerdidaService(
+        ApiClient(
+          baseUrl: 'http://example.test',
+          httpClient: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(
+                _demandaPerdidaJson(
+                  motivo: 'FUERA_DE_ZONA',
+                  cantidadBalones: 3,
+                  pesoBalonKg: 45,
+                  zonaTexto: 'Musa',
+                ),
+              ),
+              201,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        ),
+      );
+
+      await service.registrarDemandaPerdida(
+        const DemandaPerdidaCreateRequest(
+          motivo: DemandaPerdidaMotivo.fueraDeZona,
+          cantidadBalones: 3,
+          pesoBalonKg: 45,
+          zonaTexto: ' Musa ',
+        ),
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, Object?>;
+      expect(body, {
+        'motivo': 'FUERA_DE_ZONA',
+        'cantidad_balones': 3,
+        'peso_balon_kg': 45,
+        'zona_texto': 'Musa',
+      });
+    });
+  });
+
   group('StockService', () {
     test('gets today stock summary from /stock/resumen-hoy', () async {
       late http.Request capturedRequest;
@@ -720,6 +864,23 @@ Map<String, Object?> _pedidoReporteJson() {
     'pagado': false,
     'fecha_entrega': '2026-01-16',
     'created_at': '2026-01-16T10:45:03.084894-05:00',
+  };
+}
+
+Map<String, Object?> _demandaPerdidaJson({
+  String motivo = 'SIN_STOCK',
+  int cantidadBalones = 1,
+  int pesoBalonKg = 10,
+  String? zonaTexto,
+}) {
+  return {
+    'id': 1,
+    'fecha': '2026-07-30',
+    'motivo': motivo,
+    'zona_texto': zonaTexto,
+    'cantidad_balones': cantidadBalones,
+    'peso_balon_kg': pesoBalonKg,
+    'created_at': '2026-07-30T10:45:03.084894-05:00',
   };
 }
 
