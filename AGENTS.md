@@ -2,12 +2,27 @@
 
 > Gobernanza del frontend Flutter. Hereda la raíz del workspace: [../AGENTS.md](../AGENTS.md). Guía Claude: [CLAUDE.md](CLAUDE.md).
 
+Este directorio tiene su propio `.git`. Al iniciar una tarea no trivial, leer explícitamente
+`../AGENTS.md` y `../_brain/README.md`: una sesión abierta aquí no debe asumir que el agente
+cargó la gobernanza del Git padre. Revisar rama, `git log -1`, `git status --short` y remoto
+de este repo y de `../gas-backend` si cambia un contrato API.
+Leer el último `../_brain/cierre-AAAA-MM-DD*.md` y consultar el MCP global read-only
+`brain_search` (`gas` + tema); usar hasta cinco notas pertinentes, citar las usadas y
+reconciliar con código/Git (repo gana para hechos implementados). Si no hay MCP, declararlo
+y continuar con cierres y docs locales. El cierre consolidado se exporta en `../_brain/`
+desde la raíz GAS, incluyendo SHA/estado de los tres Git afectados; no crear un cierre
+paralelo en `gas-frontend/_brain/`. No hacer commit/push/merge sin encargo explícito.
+
 ## Proposito del producto
 - App movil Flutter para registrar pedidos de balones de gas.
 - Objetivo: reemplazar el cuaderno fisico.
 - Exito del MVP: que el negocio deje de depender del cuaderno.
 
-## Estado y plan (vigente 2026-05-22)
+## Estado y plan históricos (2026-05-22)
+
+La secuencia siguiente describe el plan inicial. El import 2026-10-06 documenta stock,
+reportes V4 y captura P1 de canal/demanda perdida; el último commit local del frontend
+es del 2026-07-30. Verificar código y cierre antes de tratar estas fases como futuras.
 - Backend activo: PostgreSQL (Fly+Neon). AWS/DynamoDB en standby; el frontend no debe asumir AWS.
 - Plan V2/V3/V4: [../docs/roadmap/V2_V3_FEATURE_ROADMAP.md](../docs/roadmap/V2_V3_FEATURE_ROADMAP.md), orden en [../docs/roadmap/IMPLEMENTATION_ORDER.md](../docs/roadmap/IMPLEMENTATION_ORDER.md).
 - **V2 frontend** (fase 7+): consumir contratos de `estado`/anulación/edición/peso 10/45; mostrar stock inicial, compras, ventas, ajustes y disponible sin mezclarlos; refrescar Home tras crear/editar/anular/compras; **no calcular stock crítico localmente** (lo resuelve el backend). UX en [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md).

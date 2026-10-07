@@ -2,11 +2,17 @@
 
 > Complementa [AGENTS.md](AGENTS.md) (gobernanza local, muy detallado) y [../AGENTS.md](../AGENTS.md) (raíz). Si hay conflicto, gana `AGENTS.md`.
 
+Lee ambos `AGENTS.md` explícitamente y sigue su protocolo Git + `brain_search`. El cierre
+multi-repo vive en `../_brain/`, no en un `_brain/` del frontend.
+
 ## Contexto en una línea
 App Flutter Android-first del MVP GAS para registrar pedidos de gas. Usuario adulto (50+) registra en la calle. Backend activo: PostgreSQL (Fly+Neon); AWS en standby.
 
 ## Misión actual
-Preparar el frontend para **V2** (consumir contratos de anulación/edición/peso 10/45), luego **V3** (historial por fecha) y **V4** (tablet responsive). El móvil se mantiene simple; no se cambia el diseño aprobado. Plan: [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md).
+El plan V2/V3/V4 de [../docs/roadmap/FRONTEND_UX_PLAN.md](../docs/roadmap/FRONTEND_UX_PLAN.md)
+es histórico. Antes de escoger trabajo, revisar commits, el último cierre y el brain; el móvil
+ya tiene reportes y P1 canal/demanda perdida según el corte 2026-10-06. Se mantiene Android-first
+y no se cambia el diseño aprobado sin necesidad demostrada.
 
 ## Lo más importante que Claude debe respetar
 - **No calcular stock/resumen crítico en Flutter**: el backend es source of truth. Refrescar tras crear/editar/anular, al volver a Home y al reanudar la app; no usar delays ni `ValueKey` como mecanismo principal.
