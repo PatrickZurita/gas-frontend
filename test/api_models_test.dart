@@ -241,6 +241,24 @@ void main() {
 
       expect(request.toJson()['peso_balon_kg'], 45);
     });
+
+    test('create request sends yesterday intent without client date', () {
+      const today = PedidoCreateRequest(
+        clienteId: '2',
+        cantidadBalones: 1,
+        pagado: true,
+      );
+      const yesterday = PedidoCreateRequest(
+        clienteId: '2',
+        cantidadBalones: 1,
+        pagado: true,
+        registrarAyer: true,
+      );
+
+      expect(today.toJson().containsKey('registrar_ayer'), isFalse);
+      expect(yesterday.toJson()['registrar_ayer'], isTrue);
+      expect(yesterday.toJson().containsKey('fecha_entrega'), isFalse);
+    });
   });
 
   group('Pedido V2 fields', () {

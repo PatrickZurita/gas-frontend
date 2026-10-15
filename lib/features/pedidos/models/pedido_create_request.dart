@@ -14,6 +14,7 @@ class PedidoCreateRequest {
     this.montoTotalCentavos,
     this.montoPendienteCentavos,
     this.metodoPago,
+    this.registrarAyer = false,
   });
 
   final String clienteId;
@@ -27,6 +28,9 @@ class PedidoCreateRequest {
   final int? montoTotalCentavos;
   final int? montoPendienteCentavos;
 
+  /// El backend asigna la fecha operativa de ayer en America/Lima.
+  final bool registrarAyer;
+
   /// Solo aplica cuando `pagado=true`. Backend valida y rechaza con 422 si
   /// se envia `metodo_pago` con `pagado=false`.
   final MetodoPago? metodoPago;
@@ -39,6 +43,7 @@ class PedidoCreateRequest {
       'marca_balon': marcaBalon,
       'tipo_balon': tipoBalon,
       'peso_balon_kg': pesoBalonKg,
+      if (registrarAyer) 'registrar_ayer': true,
       if (precioUnitarioCentavos != null)
         'precio_unitario_centavos': precioUnitarioCentavos,
       if (montoTotalCentavos != null)

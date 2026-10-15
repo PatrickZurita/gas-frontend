@@ -407,7 +407,7 @@ class _StockContent extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              DataChip(label: 'Vendidos hoy', value: '${stock.salidas}'),
+              DataChip(label: 'Descontados hoy', value: '${stock.salidas}'),
               DataChip(label: 'Inicio', value: inicioValue),
               if (_comprasTotal(stock) > 0)
                 DataChip(label: 'Compras hoy', value: comprasValue),

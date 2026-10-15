@@ -32,6 +32,7 @@ import 'package:gas_frontend/features/stock/models/stock_requests.dart';
 import 'package:gas_frontend/features/stock/models/stock_resumen.dart';
 import 'package:gas_frontend/features/stock/services/stock_service.dart';
 import 'package:gas_frontend/home_screen.dart';
+import 'package:gas_frontend/shared/action_button.dart';
 
 void main() {
   testWidgets('home screen shows MVP actions', (WidgetTester tester) async {
@@ -116,7 +117,7 @@ void main() {
     expect(find.text('29'), findsOneWidget);
     expect(find.text('Inicio'), findsOneWidget);
     expect(find.text('10 kg 30 / 45 kg 2'), findsOneWidget);
-    expect(find.text('Vendidos hoy'), findsOneWidget);
+    expect(find.text('Descontados hoy'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
     expect(find.text('Entradas'), findsNothing);
     expect(find.text('Actualizar stock actual'), findsOneWidget);
@@ -489,9 +490,7 @@ void main() {
     expect(clienteService.lastCreateRequest, isNotNull);
     expect(clienteService.lastCreateRequest!.canalCaptacion, isNull);
     expect(
-      clienteService.lastCreateRequest!.toJson().containsKey(
-        'canal_captacion',
-      ),
+      clienteService.lastCreateRequest!.toJson().containsKey('canal_captacion'),
       isFalse,
     );
   });
@@ -565,9 +564,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final sheet = find.byType(DemandaPerdidaSheet);
-    await tester.tap(
-      find.descendant(of: sheet, matching: find.text('45 kg')),
-    );
+    await tester.tap(find.descendant(of: sheet, matching: find.text('45 kg')));
     await tester.pump();
     await tester.tap(
       find.descendant(of: sheet, matching: find.byIcon(Icons.add)),
@@ -621,7 +618,7 @@ void main() {
     await tester.tap(find.text('Registrar pedido'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nuevo pedido'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Registrar pedido'), findsOneWidget);
     expect(find.widgetWithText(TextField, '1'), findsOneWidget);
     expect(find.text('Peso del balon'), findsOneWidget);
     expect(find.text('10 kg'), findsAtLeastNWidgets(1));
@@ -663,7 +660,81 @@ void main() {
     expect(pedidoService.lastRequest?.montoTotalCentavos, 5500);
     expect(pedidoService.lastRequest?.montoPendienteCentavos, 0);
     expect(pedidoService.lastRequest?.pagado, isTrue);
+    expect(pedidoService.lastRequest?.registrarAyer, isFalse);
     expect(pedidoService.createCalls, 1);
+  });
+
+  testWidgets('order from yesterday requires confirmation and sends intent', (
+    WidgetTester tester,
+  ) async {
+    final pedidoService = _FakePedidoService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ClienteSeleccionadoScreen(
+          cliente: const Cliente(
+            id: '1',
+            alias: 'Las Higueras 371',
+            telefono: '999888777',
+          ),
+          pedidoService: pedidoService,
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Registrar pedido'));
+    await tester.pumpAndSettle();
+    final daySelector = find.byType(SegmentedButton<bool>).first;
+    expect(tester.widget<SegmentedButton<bool>>(daySelector).selected, {false});
+    await tester.tap(
+      find.descendant(of: daySelector, matching: find.text('Ayer')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Se contará en las ventas de ayer.'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Precio por balon'),
+      '55',
+    );
+    tester.testTextInput.hide();
+    await tester.scrollUntilVisible(
+      find.text('Guardar pedido'),
+      250,
+      scrollable:
+          find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar pedido').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Pedido de ayer'), findsOneWidget);
+    expect(pedidoService.createCalls, 0);
+
+    await tester.tap(find.text('Volver'));
+    await tester.pumpAndSettle();
+    expect(pedidoService.createCalls, 0);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar pedido').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar como ayer'));
+    await tester.pumpAndSettle();
+
+    expect(pedidoService.createCalls, 1);
+    expect(pedidoService.lastRequest?.registrarAyer, isTrue);
+    expect(pedidoService.lastRequest?.toJson()['registrar_ayer'], isTrue);
+    expect(
+      pedidoService.lastRequest?.toJson().containsKey('fecha_entrega'),
+      isFalse,
+    );
   });
 
   testWidgets('order form prevents double submit while saving', (
@@ -689,22 +760,108 @@ void main() {
 
     await tester.tap(find.text('Registrar pedido'));
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, 'Precio por balon'),
       '55',
     );
-    await tester.drag(find.byType(ListView), const Offset(0, -800));
-    await tester.pump();
+    tester.testTextInput.hide();
+    await tester.scrollUntilVisible(
+      find.text('Guardar pedido'),
+      250,
+      scrollable:
+          find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+    );
+    await tester.pumpAndSettle();
 
     final saveButton = find.text('Guardar pedido').last;
-    await tester.tap(saveButton);
     await tester.tap(saveButton);
     await tester.pump();
 
     expect(find.text('Guardando...'), findsOneWidget);
+    expect(
+      tester
+          .widget<ActionButton>(
+            find.widgetWithText(ActionButton, 'Guardando...'),
+          )
+          .onPressed,
+      isNull,
+    );
     await tester.pumpAndSettle();
 
     expect(pedidoService.createCalls, 1);
+  });
+
+  testWidgets('yesterday stock conflict keeps the order form open', (
+    WidgetTester tester,
+  ) async {
+    final pedidoService = _FakePedidoService(
+      error: const ApiException(
+        message:
+            'Inicia el stock de hoy para registrar pedidos olvidados de ayer.',
+        statusCode: 409,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ClienteSeleccionadoScreen(
+          cliente: const Cliente(
+            id: '1',
+            alias: 'Las Higueras 371',
+            telefono: '999888777',
+          ),
+          pedidoService: pedidoService,
+          stockService: _FakeStockService.notStarted(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Registrar pedido'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SegmentedButton<bool>).first,
+        matching: find.text('Ayer'),
+      ),
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Precio por balon'),
+      '55',
+    );
+    tester.testTextInput.hide();
+    await tester.scrollUntilVisible(
+      find.text('Guardar pedido'),
+      250,
+      scrollable:
+          find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar pedido').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar como ayer'));
+    await tester.pumpAndSettle();
+
+    expect(pedidoService.createCalls, 1);
+    expect(
+      find.text(
+        'Inicia el stock de hoy para registrar pedidos olvidados de ayer.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(AppBar, 'Registrar pedido'), findsOneWidget);
   });
 
   testWidgets('selected client opens history and shows orders', (
@@ -936,10 +1093,12 @@ class _FakeDemandaPerdidaService implements DemandaPerdidaService {
 }
 
 class _FakePedidoService implements PedidoService {
-  _FakePedidoService({this.delay = Duration.zero}) : _history = const [];
+  _FakePedidoService({this.delay = Duration.zero, this.error})
+    : _history = const [];
 
   _FakePedidoService.withHistory()
     : delay = Duration.zero,
+      error = null,
       _history = [
         Pedido(
           id: '2',
@@ -962,11 +1121,13 @@ class _FakePedidoService implements PedidoService {
   PedidoCreateRequest? lastRequest;
   int createCalls = 0;
   final Duration delay;
+  final ApiException? error;
   final List<Pedido> _history;
 
   @override
   Future<Pedido> crearPedido(PedidoCreateRequest request) async {
     createCalls++;
+    if (error != null) throw error!;
     if (delay != Duration.zero) {
       await Future<void>.delayed(delay);
     }

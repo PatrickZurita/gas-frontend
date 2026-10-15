@@ -40,6 +40,8 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   final TextEditingController _precioController = TextEditingController();
 
   bool _pagado = true;
+  bool _registrarAyer = false;
+  bool _isConfirming = false;
   bool _isSaving = false;
   bool _saved = false;
   String? _message;
@@ -111,7 +113,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
   }
 
   Future<void> _guardarPedido() async {
-    if (_isSaving) {
+    if (_isSaving || _isConfirming) {
       return;
     }
 
@@ -154,6 +156,32 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
 
     final montoTotalCentavos = cantidad * precioCentavos;
 
+    if (_registrarAyer) {
+      _isConfirming = true;
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Pedido de ayer'),
+              content: const Text(
+                'Este pedido quedará registrado en las ventas de ayer y descontará el stock disponible.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Volver'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Guardar como ayer'),
+                ),
+              ],
+            ),
+      );
+      _isConfirming = false;
+      if (confirmar != true || !mounted) return;
+    }
+
     setState(() {
       _isSaving = true;
       _message = null;
@@ -173,6 +201,7 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
           montoTotalCentavos: montoTotalCentavos,
           montoPendienteCentavos: _pagado ? 0 : montoTotalCentavos,
           metodoPago: _pagado ? _metodoPago : null,
+          registrarAyer: _registrarAyer,
         ),
       );
       if (!mounted) {
@@ -240,6 +269,40 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               telefono: widget.cliente.telefono,
             ),
             const SizedBox(height: 20),
+            Text(
+              'Día del pedido',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(value: false, label: Text('Hoy')),
+                ButtonSegment<bool>(value: true, label: Text('Ayer')),
+              ],
+              selected: {_registrarAyer},
+              onSelectionChanged:
+                  _isSaving
+                      ? null
+                      : (selection) => setState(() {
+                        _registrarAyer = selection.first;
+                      }),
+              style: ButtonStyle(
+                minimumSize: WidgetStateProperty.all(const Size.fromHeight(60)),
+                textStyle: WidgetStateProperty.all(
+                  const TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _registrarAyer
+                  ? 'Se contará en las ventas de ayer.'
+                  : '¿Olvidaste registrar uno de ayer? Toca Ayer.',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
             NumberInputControl(
               controller: _cantidadController,
               label: 'Balones',
@@ -250,10 +313,11 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
             PesoBalonSelector(
               value: _pesoBalonKg,
               enabled: !_isSaving,
-              onChanged: (value) => setState(() {
-                _pesoBalonKg = value;
-                if (_message != null) _message = null;
-              }),
+              onChanged:
+                  (value) => setState(() {
+                    _pesoBalonKg = value;
+                    if (_message != null) _message = null;
+                  }),
             ),
             const SizedBox(height: 10),
             _StockDisponibleHint(
@@ -353,9 +417,9 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               const SizedBox(height: 16),
               Text(
                 'Como pago',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               SegmentedButton<MetodoPago>(
@@ -372,18 +436,21 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
                   ),
                 ],
                 selected: {_metodoPago},
-                onSelectionChanged: _isSaving
-                    ? null
-                    : (selection) {
-                        setState(() {
-                          _metodoPago = selection.first;
-                        });
-                      },
+                onSelectionChanged:
+                    _isSaving
+                        ? null
+                        : (selection) {
+                          setState(() {
+                            _metodoPago = selection.first;
+                          });
+                        },
                 style: ButtonStyle(
-                  minimumSize:
-                      WidgetStateProperty.all(const Size.fromHeight(60)),
-                  textStyle:
-                      WidgetStateProperty.all(const TextStyle(fontSize: 20)),
+                  minimumSize: WidgetStateProperty.all(
+                    const Size.fromHeight(60),
+                  ),
+                  textStyle: WidgetStateProperty.all(
+                    const TextStyle(fontSize: 20),
+                  ),
                 ),
               ),
             ],
@@ -398,11 +465,12 @@ class _RegistrarPedidoScreenState extends State<RegistrarPedidoScreen> {
               label: _isSaving ? 'Guardando...' : 'Guardar pedido',
               icon: Icons.save,
               primary: true,
-              onPressed: (_isSaving ||
-                      (_stockDisponibleSeleccionado != null &&
-                          _stockDisponibleSeleccionado! <= 0))
-                  ? null
-                  : _guardarPedido,
+              onPressed:
+                  (_isSaving ||
+                          (_stockDisponibleSeleccionado != null &&
+                              _stockDisponibleSeleccionado! <= 0))
+                      ? null
+                      : _guardarPedido,
             ),
           ],
         ),
@@ -461,8 +529,7 @@ class _StockDisponibleHint extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.info_outline,
-                size: 20, color: colors.onSurfaceVariant),
+            Icon(Icons.info_outline, size: 20, color: colors.onSurfaceVariant),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
@@ -476,9 +543,10 @@ class _StockDisponibleHint extends StatelessWidget {
     }
 
     final sinStock = disponible! <= 0;
-    final bgColor = sinStock
-        ? colors.errorContainer.withValues(alpha: 0.55)
-        : colors.primaryContainer.withValues(alpha: 0.45);
+    final bgColor =
+        sinStock
+            ? colors.errorContainer.withValues(alpha: 0.55)
+            : colors.primaryContainer.withValues(alpha: 0.45);
     final borderColor = sinStock ? colors.error : colors.primary;
     final iconData =
         sinStock ? Icons.error_outline : Icons.check_circle_outline;
@@ -512,4 +580,3 @@ class _StockDisponibleHint extends StatelessWidget {
     );
   }
 }
-
